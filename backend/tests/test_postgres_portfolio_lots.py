@@ -137,6 +137,24 @@ def test_postgres_lot_and_disposal_rows_are_append_only(pg_session):
         pg_session.commit()
     pg_session.rollback()
 
+    sell = execution(owner, usd, account, instrument, portfolio, side="SELL")
+    pg_session.add(sell)
+    pg_session.flush()
+    allocation = LotDisposalAllocationModel(
+        id=uuid4(), owner_id=owner.id, portfolio_id=portfolio.id,
+        account_id=account.id, instrument_id=instrument.id,
+        quote_currency_definition_id=usd.id, disposal_execution_id=sell.id,
+        lot_id=lot.id, quantity=Decimal("1"), cost_basis=Decimal("10"),
+        gross_proceeds=Decimal("20"), allocated_sale_fee=Decimal("0"),
+        net_proceeds=Decimal("20"), realized_gain_loss=Decimal("10"),
+    )
+    pg_session.add(allocation)
+    pg_session.commit()
+    allocation.realized_gain_loss = Decimal("999")
+    with pytest.raises(DBAPIError, match="append-only"):
+        pg_session.commit()
+    pg_session.rollback()
+
     # The operational lock row is intentionally mutable; it is not financial history.
     lock = PortfolioPositionLockModel(
         owner_id=owner.id, portfolio_id=portfolio.id, account_id=account.id,
