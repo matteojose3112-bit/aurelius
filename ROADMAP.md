@@ -409,3 +409,6 @@ Implementation branch: feat/aurelius-foundation-0.3-ledger-persistence-models. N
 - [x] Implement exact reversal service with source-journal row locking and one-reversal protection.
 - [ ] Validate posting service with PostgreSQL 16 same-key concurrency, competing reversals, rollback/retry, and closed-period tests.
 - [ ] Integrate service into API routes only after the service test suite passes.
+
+- [x] PostgreSQL 16 CI passed with 25 integration tests covering posting/reversal concurrency, rollback after partial writes, and account close/post serialization.
+- [x] Full CI passed on the latest service branch head: PostgreSQL integration, SQLite backend, frontend tests, and frontend build.
