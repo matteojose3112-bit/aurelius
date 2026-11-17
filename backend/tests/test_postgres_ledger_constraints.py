@@ -55,10 +55,10 @@ def pg_engine():
         version = int(connection.scalar(text("SHOW server_version_num")))
         assert version >= 160000, "PostgreSQL 16 or newer is required"
     with engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE currency_definitions, users RESTART IDENTITY CASCADE"))
+        connection.execute(text("TRUNCATE TABLE currency_definitions, unit_definitions, users RESTART IDENTITY CASCADE"))
     yield engine
     with engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE currency_definitions, users RESTART IDENTITY CASCADE"))
+        connection.execute(text("TRUNCATE TABLE currency_definitions, unit_definitions, users RESTART IDENTITY CASCADE"))
     engine.dispose()
 
 
