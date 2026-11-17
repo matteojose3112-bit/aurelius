@@ -1,7 +1,7 @@
 """Integration tests that must run against disposable PostgreSQL 16."""
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import os
 from threading import Event
