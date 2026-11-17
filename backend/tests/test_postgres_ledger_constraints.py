@@ -205,7 +205,7 @@ def test_postgres_reversal_must_exactly_invert_original(pg_session):
         debit_account,
         credit_account,
         "999",
-        "1000",
+        "999",
         reversal_of=original.id,
     )
     # Reverse the sides; the first amount is deliberately incorrect.
