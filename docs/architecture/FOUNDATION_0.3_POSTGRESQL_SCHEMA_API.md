@@ -163,7 +163,7 @@ Create-journal flow:
 5. Lock all affected accounts in deterministic UUID order and re-check owner, currency definition, and OPEN status.
 6. If the owner has accounting periods configured, require the effective date to fall in an OPEN period; if no periods exist, period enforcement is inactive.
 7. Insert journal header and postings, write audit event, and complete the idempotency result in the same transaction.
-8. Commit once; deferred PostgreSQL constraints are the final authority. Any exception rolls back the idempotency claim and all journal/audit writes.
+8. Commit once; deferred PostgreSQL constraints are the final authority. Any exception rolls back the idempotency claim and all journal/audit writes. The service retries bounded transient serialization/deadlock/connection failures up to three attempts, always reusing the same idempotency key. A connection failure during COMMIT is therefore safe to retry: the next attempt either replays the committed result or performs the rolled-back operation.
 
 Reverse-journal flow locks the source journal row, verifies ownership and reversal eligibility, locks its accounts, generates exact inverse lines, writes the reversal and audit event, and completes idempotency in one transaction. Competing reversals serialize on the source journal and the database unique constraint remains the final guard.
 
