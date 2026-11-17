@@ -212,8 +212,8 @@ def apply_portfolio_execution(
             else:
                 if portfolio.status != "ACTIVE":
                     raise PortfolioScopeError("portfolio is archived")
-                if account.status != "OPEN":
-                    raise PortfolioScopeError("brokerage account is closed")
+                if account.status != "OPEN" or account.account_type != "ASSET":
+                    raise PortfolioScopeError("brokerage account must be an open asset account")
                 if instrument.status != "ACTIVE":
                     raise PortfolioScopeError("instrument is inactive")
                 currency = session.scalars(
@@ -224,6 +224,7 @@ def apply_portfolio_execution(
                         CurrencyDefinitionModel.fund.is_(False),
                         CurrencyDefinitionModel.minor_unit_exponent.is_not(None),
                     )
+                    .order_by(CurrencyDefinitionModel.published_on.desc())
                 ).first()
                 if currency is None:
                     raise PortfolioScopeError(
@@ -355,7 +356,7 @@ def apply_portfolio_execution(
 
                 session.add(
                     AuditEventModel(
-                        id=__import__("uuid").uuid4(),
+                        id=uuid4(),
                         owner_id=owner_id,
                         actor_id=actor_id,
                         event_type="portfolio.trade_execution.recorded",
