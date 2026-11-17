@@ -389,3 +389,16 @@ The reference catalog also includes representative equity issuers, sovereign deb
 The domain now also defines MIC/timezone-aware market venues, time-bounded venue listings, and explicit futures/derivative, bond, and prediction-contract specifications. These contracts retain lifecycle dates, units, tick/contract terms, coupon/day-count terms, resolution sources, and settlement rules.
 
 Market observations and Aurelius forecasts are also separate domain records: observations retain source and observed/retrieved timestamps, while forecasts retain model/version, probability, horizon, evidence, and later resolution. Market-implied probabilities are not treated as ground truth or as Aurelius model forecasts.
+
+
+## Foundation 0.4 — global reference persistence
+
+The next persistence slice adds tables for units, global assets, instruments, identifiers, MIC venues, time-bounded listings, derivative/futures specs, bond terms, prediction contracts, provider licensing/coverage, immutable market observations, and forecast records/resolutions. It uses global reference IDs rather than user ownership; user holdings will reference these instruments later. PostgreSQL prevents overlapping identifier/listing validity windows and protects reference/observation history with append-only triggers.
+
+Seed illustrative unit and asset definitions explicitly after migration:
+
+- Dry run: from backend/, run python -m scripts.seed_global_reference_data
+- Apply to the configured development database: python -m scripts.seed_global_reference_data --apply
+- Production additionally requires --allow-production.
+
+No market prices, provider subscriptions, broker access, listings, or futures expiries are included in the seed. The instrument master remains separate from owner portfolios and from the cash ledger.
