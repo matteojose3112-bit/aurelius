@@ -6,7 +6,7 @@ Last updated: 2026-11-17
 
 **Aurelius** is the planned AI financial intelligence and investment operating system evolving from the FinTrack personal-finance MVP.
 
-**Current status: Foundation 0.2 in progress.** Foundation 0.1 established the exact-money primitive. A follow-on branch now defines immutable accounts, double-entry journals, same-currency asset transfers, append-only reversals, and accounting golden cases. Foundation 0.2 CI run #136 passed backend and frontend jobs. No AI agents, market-data integrations, forecasting, paper trading, or brokerage connections are implemented. The existing application remains the FinTrack MVP.
+**Current status: Foundation 0.3 in progress.** The versioned ISO currency registry, SQLAlchemy persistence schema, PostgreSQL 16 guards, atomic posting/reversal service, and first authenticated v1 ledger API are implemented on stacked draft PRs. PostgreSQL integration and full CI are passing. Global instrument master, market-data providers, FX valuation, portfolio analytics, AI research, forecasting, and paper trading remain future milestones. The existing FinTrack endpoints remain the legacy MVP.
 
 **Guiding principle:** evidence, exact calculations, transparency, and downside protection over confident-sounding answers.
 
@@ -25,19 +25,26 @@ Last updated: 2026-11-17
 
 ### Aurelius Foundation 0.1 — active work
 - [x] Add an infrastructure-independent `Money` value object using Python `Decimal`.
-- [x] Add explicit initial currency exponents for BHD, CAD, COP, EUR, GBP, JPY, KWD, and USD; reject unsupported codes rather than assuming two decimals.
+- [x] Replace the initial eight-code exponent allowlist with the versioned SIX ISO 4217 registry (178 current codes, 165 with published exponents).
 - [x] Add fixed-scale decimal-string serialization, exact construction from integer minor units, minor-unit conversion, canonical zero, same-currency arithmetic, and cross-currency rejection.
 - [x] Add deterministic unit tests for scale, rounding, float rejection, invalid values, and FX boundary behavior.
 - [x] Record ADR-0001 for modular-monolith boundaries and read-only AI decision support.
 - [x] Obtain passing CI on the feature branch and preserve all legacy MVP tests (run #125: backend compile, Alembic upgrade, pytest; frontend tests and production build).
-- [x] Define account ownership, immutable identity, account types, currency invariants, and normal balance rules in the Foundation 0.2 domain contract.\n- [x] Define balanced single-currency journal entries, positive postings, append-only corrections, one-time reversals, and same-currency asset transfers.\n- [x] Add accounting golden cases for opening balances, income, expenses, transfers, reversals, ownership, currency, and closed-account validation.\n- [x] Obtain passing CI on the Foundation 0.2 branch and complete static review before considering API/persistence design (run #136).
+- [x] Define account ownership, immutable identity, account types, currency invariants, and normal balance rules in the Foundation 0.2 domain contract.
+- [x] Define balanced single-currency journal entries, positive postings, append-only corrections, one-time reversals, and same-currency asset transfers.
+- [x] Add accounting golden cases for opening balances, income, expenses, transfers, reversals, ownership, currency, and closed-account validation.
+- [x] Obtain passing CI on the Foundation 0.2 branch and complete static review before considering API/persistence design (run #136).
 
 ### Financial correctness and data model
-- [x] Establish the initial documented money contract: currency code, explicit currency scale/minor units, Decimal calculations, ROUND_HALF_UP normalization, and decimal-string serialization policy. See `docs/finance/MONEY_CONTRACT.md`.
-- [ ] Migrate the existing API away from binary-float monetary fields to decimal-string representations; the new domain primitive is not yet wired into legacy endpoints.
-- [x] Define domain-level financial account identity, owner scope, currency, account types, and derived normal-side balances (Foundation 0.2; not persisted).\n- [x] Define opening-balance journals, balanced transfers, and reversal-based corrections (Foundation 0.2; not connected to API/database).\n- [ ] Model and persist financial accounts, liabilities, and account ownership before claiming complete net-worth/accounting support.
-- [ ] Add multi-currency support with explicit native/functional/reporting currencies and timestamped FX rates.
-- [ ] Design an auditable transaction/ledger model, reconciliation status, immutable import history, and correction/reversal workflow.
+- [x] Establish the versioned global money contract: ISO 4217 currency definitions, explicit minor-unit exponents, Decimal/integer calculations, exact NUMERIC persistence, and string-based API serialization. See `docs/finance/MONEY_CONTRACT.md`.
+- [ ] Migrate legacy FinTrack transaction/budget/goal endpoints away from binary-float monetary fields; the new Aurelius v1 ledger API already uses integer minor-unit strings.
+- [x] Define and persist financial account identity, owner scope, currency, account types, and derived normal-side balances.
+- [x] Persist balanced journal postings, same-currency account constraints, and reversal-based corrections; opening-balance workflows remain to be exposed.
+- [x] Model and persist owner-scoped financial accounts and liability account types in the Aurelius ledger schema; net-worth reporting and valuation are still pending.
+- [x] Support multiple native account currencies and an independent owner reporting-currency preference in the persistence model.
+- [ ] Add timestamped FX observations and reproducible functional/reporting-currency valuation.
+- [x] Implement balanced immutable journal postings, idempotency, audit events, and reversal-based corrections.
+- [ ] Add reconciliation status, immutable statement-import history, and correction workflows.
 - [ ] Add golden-case tests for rounding, aggregation, negative balances, refunds, transfers, FX conversion, leap/month boundaries, and currency precision.
 - [ ] Preserve account isolation across every new table, endpoint, report, export, and background task.
 
@@ -54,7 +61,8 @@ Last updated: 2026-11-17
 - Expand the current transaction/budget/goal MVP into account-based personal finance.
 - Build account balances, opening balances, transfers, liabilities, net worth, income/expense statements, cash flow, budgets, and forecasts.
 - Add reconciliation, recurring transactions, CSV import/export, duplicate detection, and source documents.
-- Introduce multi-currency records and auditable FX conversion.
+- [x] Support multi-currency native accounts and a separate owner reporting-currency preference.
+- [ ] Add timestamped FX observations and auditable functional/reporting-currency conversion.
 - Deliver a financial overview with explainable calculations and clear data-completeness indicators.
 
 ## Phase 2 — Market Intelligence
@@ -312,7 +320,18 @@ PR #12 is an integration test vehicle, not a merge authorization or a replacemen
 - [x] Replace `npm install` with `npm ci` in frontend CI.
 - [x] Remove temporary lockfile-bootstrap permissions and branch-write logic; CI is read-only again.
 - [x] Verify clean install, Vitest 4.1.12, zero-vulnerability npm audit, frontend tests/build, backend tests, and populated PostgreSQL migration; all passed in CI run #114.
-\n\n## Foundation 0.2 — Accounts & Ledger (domain implementation)\n\n- [x] Add immutable FinancialAccount identities with owner, account type, currency, and open/closed status.\n- [x] Define normal balance rules for assets, expenses, liabilities, equity, and income.\n- [x] Add immutable positive debit/credit postings and balanced single-currency JournalEntry values.\n- [x] Add append-only LedgerBook posting, derived balances, asset-to-asset transfers, and exact one-time reversals.\n- [x] Add accounting golden-case and rejection tests; Foundation 0.2 CI run [#136](https://github.com/matteojose3112-bit/aurelius/actions/runs/44185872151) passed backend and frontend jobs.\n- [ ] Review idempotency, concurrency, account closure, backdating, reconciliation, and persistence constraints before API/database integration.\n- [ ] Keep production migrations, deployments, and external financial actions behind explicit approval.\n
+
+
+## Foundation 0.2 — Accounts & Ledger (domain implementation)
+
+- [x] Add immutable FinancialAccount identities with owner, account type, currency, and open/closed status.
+- [x] Define normal balance rules for assets, expenses, liabilities, equity, and income.
+- [x] Add immutable positive debit/credit postings and balanced single-currency JournalEntry values.
+- [x] Add append-only LedgerBook posting, derived balances, asset-to-asset transfers, and exact one-time reversals.
+- [x] Add accounting golden-case and rejection tests; Foundation 0.2 CI run [#136](https://github.com/matteojose3112-bit/aurelius/actions/runs/44185872151) passed backend and frontend jobs.
+- [ ] Review idempotency, concurrency, account closure, backdating, reconciliation, and persistence constraints before API/database integration.
+- [ ] Keep production migrations, deployments, and external financial actions behind explicit approval.
+
 
 ## Foundation 0.2.1 — Ledger Hardening (design baseline)
 
@@ -414,3 +433,20 @@ Implementation branch: feat/aurelius-foundation-0.3-ledger-persistence-models. N
 - [x] Full CI passed on the latest service branch head: PostgreSQL integration, SQLite backend, frontend tests, and frontend build.
 
 - [x] Add bounded retry for transient PostgreSQL serialization/deadlock/connection errors, reusing the same idempotency key to handle unknown commit outcomes.
+
+
+## Current Foundation 0.3 delivery status
+
+- [x] SIX ISO 4217 current/historical registry and deterministic maintainer updater.
+- [x] SQLAlchemy persistence models and Alembic migration for currency definitions, accounts, journals, postings, idempotency, audit, periods, and owner preferences.
+- [x] PostgreSQL 16 deferred constraints, append-only guards, exact minor-unit check, and period exclusion.
+- [x] Atomic idempotent journal posting, exact reversals, deterministic account locking, and bounded retry with the same idempotency key.
+- [x] Authenticated versioned FastAPI endpoints for currency discovery, account management, native-currency balances, journal posting/reads, and reversals.
+- [x] PostgreSQL 16 CI validates migration, database invariants, posting/reversal concurrency, rollback, and API owner isolation.
+- [ ] Add global instrument master and unit ontology for securities, futures, options, commodities, crypto, prediction/event contracts, real assets, and liabilities.
+- [ ] Add exchange MIC/listing/trading-calendar registry and contract specifications.
+- [ ] Add FX observations and reproducible multi-currency portfolio valuation.
+- [ ] Add provider adapters with provenance, licensing, freshness, coverage, and jurisdiction checks.
+- [ ] Add portfolio holdings, lots, corporate actions, risk analytics, research, and prediction calibration.
+
+The legacy FinTrack transaction/budget/goal API remains in place and continues to use float-backed legacy models. It must be migrated separately; the new Aurelius v1 ledger API does not silently reinterpret legacy rows.

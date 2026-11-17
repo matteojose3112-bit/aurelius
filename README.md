@@ -360,3 +360,19 @@ The latest full CI run passed with **25 PostgreSQL 16 integration tests**, the S
 
 
 The posting service also performs up to three bounded retries for PostgreSQL serialization failures, deadlocks, and connection failures, always reusing the same idempotency key. This makes retry after an unknown commit outcome safe: a retry either replays the committed result or executes after the original transaction rolled back.
+
+
+## Foundation 0.3 — versioned ledger API
+
+The tested persistence and posting service is now exposed through authenticated FastAPI routes under /v1. The first API surface includes currency discovery, owner-scoped account creation/listing, native-currency balance derivation, journal posting, journal reads, and exact reversals. JWT context supplies ownership; the client cannot choose owner_id. All money inputs use integer minor-unit strings. Ledger routes require PostgreSQL.
+
+After Alembic upgrade, seed the immutable currency registry explicitly:
+
+- Dry run: from backend/, run python -m scripts.seed_currency_registry
+- Apply to the configured development database: python -m scripts.seed_currency_registry --apply
+- Production additionally requires --allow-production. No seed command was executed against any hosted database in this work.
+
+PostgreSQL 16 CI has validated the persistence migration, deferred constraints, posting/reversal transactions, and API flow. The existing FinTrack float-based endpoints remain legacy and are not silently rewritten by the new API. Global instrument/commodity/derivative/prediction-market master data and provider adapters remain future milestones.
+
+
+The latest PostgreSQL 16 API integration run passed **27 tests**, including a fail-closed check that account creation is unavailable until the explicit currency-registry seed has been applied. The full backend and frontend CI suites also pass on the validated API code.

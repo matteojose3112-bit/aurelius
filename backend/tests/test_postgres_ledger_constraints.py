@@ -8,10 +8,12 @@ from threading import Event
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.exc import IntegrityError, DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.main import app
 from app.models import User
 from app.persistence.currency_registry_seed import seed_currency_registry
 from app.persistence.models import (
@@ -775,3 +777,121 @@ def test_posting_service_serializes_account_close_against_post(
             IdempotencyRecordModel.idempotency_key == "close-post-race-key"
         )
     ) == 0
+
+
+
+def test_versioned_ledger_api_account_post_balance_reversal_and_owner_isolation(pg_session):
+    with TestClient(app) as client:
+        first_registration = client.post(
+            "/api/auth/register",
+            json={"email": f"{uuid4()}@api-test.example", "password": "securepass123"},
+        )
+        assert first_registration.status_code == 201
+        first_user_id = first_registration.json()["user"]["id"]
+        client.headers["Authorization"] = (
+            f"Bearer {first_registration.json()['access_token']}"
+        )
+
+        seed_currency_registry(pg_session)
+        pg_session.commit()
+
+        currencies = client.get("/v1/currencies")
+        assert currencies.status_code == 200
+        assert any(item["code"] == "USD" for item in currencies.json())
+        assert all(item["code"] not in {"XAU", "XAG"} for item in currencies.json())
+
+        cash = client.post(
+            "/v1/accounts",
+            json={"name": "Operating cash", "account_type": "ASSET", "currency": "USD"},
+        )
+        income = client.post(
+            "/v1/accounts",
+            json={"name": "Service revenue", "account_type": "INCOME", "currency": "USD"},
+        )
+        assert cash.status_code == 201
+        assert income.status_code == 201
+
+        journal_payload = {
+            "effective_date": "2026-11-17",
+            "description": "API integration journal",
+            "currency": "USD",
+            "postings": [
+                {
+                    "account_id": cash.json()["id"],
+                    "side": "DEBIT",
+                    "amount_minor": "12500",
+                },
+                {
+                    "account_id": income.json()["id"],
+                    "side": "CREDIT",
+                    "amount_minor": "12500",
+                },
+            ],
+        }
+        posted = client.post(
+            "/v1/ledger/journals",
+            json=journal_payload,
+            headers={"Idempotency-Key": "api-post-key-001"},
+        )
+        assert posted.status_code == 201
+        journal_id = posted.json()["journal_id"]
+
+        replay = client.post(
+            "/v1/ledger/journals",
+            json=journal_payload,
+            headers={"Idempotency-Key": "api-post-key-001"},
+        )
+        assert replay.status_code == 201
+        assert replay.json()["journal_id"] == journal_id
+
+        balance = client.get(
+            f"/v1/accounts/{cash.json()['id']}/balance?as_of=2026-11-17"
+        )
+        assert balance.status_code == 200
+        assert balance.json()["balance_minor"] == "12500"
+
+        detail = client.get(f"/v1/ledger/journals/{journal_id}")
+        assert detail.status_code == 200
+        assert len(detail.json()["postings"]) == 2
+
+        reversal = client.post(
+            f"/v1/ledger/journals/{journal_id}/reversal",
+            json={"effective_date": "2026-11-18", "description": "API reversal"},
+            headers={"Idempotency-Key": "api-reversal-key-001"},
+        )
+        assert reversal.status_code == 201
+        assert reversal.json()["reversal_of"] == journal_id
+
+        second_registration = client.post(
+            "/api/auth/register",
+            json={"email": f"{uuid4()}@api-test.example", "password": "securepass123"},
+        )
+        assert second_registration.status_code == 201
+        client.headers["Authorization"] = (
+            f"Bearer {second_registration.json()['access_token']}"
+        )
+        forbidden_balance = client.get(
+            f"/v1/accounts/{cash.json()['id']}/balance?as_of=2026-11-17"
+        )
+        assert forbidden_balance.status_code == 404
+
+
+
+def test_versioned_account_api_fails_closed_when_registry_is_not_seeded(pg_session):
+    with TestClient(app) as client:
+        unauthenticated = client.get("/v1/accounts")
+        assert unauthenticated.status_code == 401
+
+        registration = client.post(
+            "/api/auth/register",
+            json={"email": f"{uuid4()}@no-registry.example", "password": "securepass123"},
+        )
+        assert registration.status_code == 201
+        client.headers["Authorization"] = f"Bearer {registration.json()['access_token']}"
+
+        response = client.post(
+            "/v1/accounts",
+            json={"name": "Cash", "account_type": "ASSET", "currency": "USD"},
+        )
+        assert response.status_code == 503
+        assert "registry has not been seeded" in response.json()["detail"]
