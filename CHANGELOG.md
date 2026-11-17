@@ -336,4 +336,4 @@ All notable project changes are documented here.
 - Added PostgreSQL checks for exact integral minor units, 38-digit posting bounds, deferred journal balancing, reversal symmetry, closed-account rules, append-only records, transaction rollback, and concurrent idempotency-key uniqueness.
 
 ### Status
-- First PostgreSQL CI run is pending. SQLite migration/test success is not treated as PostgreSQL validation. No hosted database or production environment was used.
+- Latest full CI run passed: PostgreSQL 16 migration and 16 database integration tests, SQLite backend tests, frontend tests, and frontend build. SQLite migration/test success is not treated as PostgreSQL validation. No hosted database or production environment was used.
