@@ -7,7 +7,7 @@ from app.domain.currency import CurrencyRegistry, DEFAULT_CURRENCY_REGISTRY
 
 def test_bundled_registry_contains_current_and_historical_six_lists():
     assert len(DEFAULT_CURRENCY_REGISTRY.current_definitions) == 178
-    assert len(DEFAULT_CURRENCY_REGISTRY.historical_definitions) == 137
+    assert len(DEFAULT_CURRENCY_REGISTRY.historical_definitions) == 152
     assert DEFAULT_CURRENCY_REGISTRY.current_published == "2026-09-17"
     assert DEFAULT_CURRENCY_REGISTRY.historical_published == "2026-01-01"
 
@@ -73,3 +73,12 @@ def test_snapshot_loader_rejects_duplicate_codes():
 def test_registry_snapshot_is_valid_json():
     path = DEFAULT_CURRENCY_REGISTRY.source["official_page"]
     assert path.startswith("https://")
+
+
+def test_historical_withdrawal_dates_are_preserved_per_country():
+    records = DEFAULT_CURRENCY_REGISTRY.get_historical("RUR")
+    withdrawals = {item.withdrawn: item.countries for item in records}
+    assert len(records) == 10
+    assert withdrawals["1993-01"] == ("KYRGYZSTAN",)
+    assert withdrawals["1994-08"] == ("ARMENIA", "AZERBAIJAN")
+    assert withdrawals["2004-01"] == ("RUSSIAN FEDERATION",)
