@@ -326,7 +326,7 @@ class PredictionContractSpecModel(Base):
 class ProviderSourceModel(Base):
     __tablename__ = "provider_sources"
     __table_args__ = (
-        UniqueConstraint("provider_key", name="uq_provider_sources_key"),
+        UniqueConstraint("provider_key", "terms_version", name="uq_provider_sources_key_terms"),
     )
 
     id: Mapped[object] = mapped_column(Uuid(as_uuid=True), primary_key=True)
