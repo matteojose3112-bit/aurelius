@@ -401,3 +401,16 @@ All notable project changes are documented here.
 
 ### Status
 - Foundation 0.4 global reference persistence is implemented and validated in CI. No market-data provider connection, hosted database migration, production seed, Render change, deployment, or trading action was performed.
+
+
+## Unreleased — Foundation 0.5 provider adapter framework — 2026-11-17
+
+### Added
+- Added provider-neutral capability, request, observation, and licensing-policy contracts.
+- Added explicit global/regional/venue coverage checks and fail-closed purpose/region licensing.
+- Added PostgreSQL-only ingestion service that fetches outside transactions, validates instruments/units/currencies, and inserts immutable observations atomically.
+- Added a unique provider-observation deduplication index and Alembic revision 0004.
+- Added fake-provider tests for capability matching, licensing, out-of-request rows, and idempotent replay.
+
+### Status
+- No live provider adapters, credentials, paid subscriptions, external data fetches, or production data writes are included. CI validation pending.
