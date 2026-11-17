@@ -458,3 +458,13 @@ All notable project changes are documented here.
 ### Design boundary
 - This is the transaction-composition foundation for trade settlement, not yet the trade-to-ledger integration itself. The portfolio lot service still records investment-side facts separately and must be refactored to accept a caller-owned session before a coordinator can commit both domains atomically.
 - No trading API, brokerage connection, order placement, production data write, deployment, or infrastructure change was performed.
+
+## Unreleased — Foundation 0.6 session-bound portfolio execution — 2026-11-17
+
+### Added
+- Added `apply_portfolio_execution_in_session`, which records the immutable execution, acquisition lot or disposal allocations, position lock update, and audit event within a caller-owned PostgreSQL transaction.
+- Preserved `apply_portfolio_execution` as the transaction-owning wrapper for standalone use.
+- Added PostgreSQL integration coverage proving an outer rollback removes the execution, acquisition lot, and portfolio audit event together.
+
+### Boundary
+- The portfolio and ledger services can now participate in the same caller-owned transaction. A coordinator that invokes both and defines the trade/cash/fee/FX accounting entries is still outstanding; no user-facing trade API is enabled.
