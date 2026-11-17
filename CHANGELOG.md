@@ -1,3 +1,22 @@
+## [Unreleased] — Aurelius transformation assessment — 2026-11-17
+
+### Product direction
+- Announced the transformation of FinTrack into **Aurelius**, an evidence-first AI financial intelligence and investment operating system.
+- Defined the nine target departments, specialist-agent responsibilities, prediction accountability, thesis tracking, independent review, and read-only safety boundary.
+- Recommended a modular-monolith architecture with deterministic financial/domain services, provider adapters, typed AI specialist interfaces, source provenance, and append-only audit/prediction records.
+
+### Repository assessment
+- Reviewed the default-branch tree, backend/frontend implementation, tests, Render Blueprint, open issues, branches, and open draft pull requests.
+- Confirmed that main is behind integration PR #12: fixed-precision financial fields, populated migration tests, frontend lockfile, npm ci, and related hardening remain unmerged draft work.
+- Identified high-priority financial-model gaps: currency absent from records, Numeric(14,2) does not cover all currency scales, and the integration API converts Decimal values to JSON floats.
+- Identified missing account/ledger/portfolio/market-data/AI/prediction/scheduling capabilities; these are planned, not implemented.
+- Recorded preliminary provider screen for SEC EDGAR, FRED, FMP, Alpha Vantage, and Massive, including current public pricing/limits and licensing caveats.
+
+### Safety and release status
+- Documentation-only transformation plan; no application code, database, Render infrastructure, secrets, or production data changed.
+- No PR was merged and no deployment or paid service was initiated.
+- Real-money trading and brokerage execution remain disabled.
+
 # Changelog
 
 All notable project changes are documented here.
