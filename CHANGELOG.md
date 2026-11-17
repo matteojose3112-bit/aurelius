@@ -314,3 +314,16 @@ All notable project changes are documented here.
 
 ### Status
 - Implementation is committed to an isolated draft feature branch. CI validation is pending. No ORM models, Alembic migrations, PostgreSQL database, API integration, Render changes, or deployment are included in this slice.
+
+
+## Unreleased — Foundation 0.3 persistence models — 2026-11-17
+
+### Added
+- Added SQLAlchemy models for the global currency registry, financial accounts, journal entries, journal postings, idempotency, audit events, accounting periods, and owner reporting preferences.
+- Added owner/currency composite foreign keys so postings cannot link a journal and account from different owners or currency definitions.
+- Added Alembic migration 0002 for the new ledger persistence schema, with PostgreSQL deferred journal-balance and reversal validation, append-only guards, account identity protection, and accounting-period overlap enforcement.
+- Added idempotent currency-registry seeding that preserves immutable published definitions and historical withdrawal-date records.
+- Added persistence-model and registry-seed tests.
+
+### Status
+- Implementation is isolated on a draft feature branch. CI validation is pending. PostgreSQL concurrency behavior remains unverified until the disposable PostgreSQL 16 test job is added. No hosted database, API, Render configuration, production data, or deployment changed.
