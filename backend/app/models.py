@@ -40,3 +40,4 @@ class Goal(Base):
 
 # Register Aurelius persistence tables on the shared metadata used by Alembic.
 from app.persistence import models as aurelius_persistence_models  # noqa: F401,E402
+from app.persistence import instrument_models as aurelius_instrument_models  # noqa: F401,E402
