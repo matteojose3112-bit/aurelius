@@ -466,3 +466,5 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 
 - [x] Add MIC/timezone venue and time-bounded listing domain types.
 - [x] Add explicit derivative/futures, bond, and prediction-contract specification types.
+
+- [x] Add provenance-aware market observation and separately calibrated forecast domain records; persistence, scoring, and provider adapters remain pending.
