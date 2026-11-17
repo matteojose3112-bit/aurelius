@@ -525,3 +525,7 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [ ] Only after those gates pass, design read-only portfolio APIs and valuation/FX reporting.
 
 **Boundary:** the current lot service remains long-only and spot-style. It records fills, not orders, and does not yet post corresponding cash/fee/FX journals. No portfolio trading API should be exposed until cross-domain atomicity and accounting semantics are proven.
+
+- [x] Refactor portfolio execution to expose a caller-owned-session primitive while preserving the existing transaction-owning wrapper.
+- [x] Prove portfolio execution, acquisition lot, and audit event all roll back with the caller's outer transaction in PostgreSQL.
+- [ ] Build the transaction coordinator that invokes both session-bound primitives and writes the investment and cash sides atomically.

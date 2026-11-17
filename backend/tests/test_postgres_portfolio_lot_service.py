@@ -17,13 +17,14 @@ from app.domain.portfolio_lots import (
     TradeSide,
 )
 from app.persistence.currency_registry_seed import seed_currency_registry
-from app.persistence.models import CurrencyDefinitionModel, FinancialAccountModel
+from app.persistence.models import AuditEventModel, CurrencyDefinitionModel, FinancialAccountModel
 from app.persistence.instrument_models import InstrumentDefinitionModel
-from app.persistence.portfolio_models import InvestmentPortfolioModel, TradeExecutionModel
+from app.persistence.portfolio_models import InvestmentPortfolioModel, PortfolioLotModel, TradeExecutionModel
 from app.persistence.portfolio_lot_service import (
     ExecutionIdConflict,
     OutOfOrderExecution,
     apply_portfolio_execution,
+    apply_portfolio_execution_in_session,
 )
 
 
@@ -107,6 +108,40 @@ def test_service_buy_sell_and_same_payload_replay(pg_factory):
     assert sold.application.realized_gain_loss == Decimal("12")
     assert sold.position.quantity == Decimal("7")
     assert sold.position.remaining_cost_basis == Decimal("70")
+
+
+
+def test_session_bound_portfolio_execution_rolls_back_with_outer_transaction(pg_factory):
+    owner_id, account, instrument, portfolio = make_context(pg_factory)
+    trade = make_trade(
+        portfolio, account, instrument, side="buy",
+        quantity="4", price="12.50", fee="1.25",
+    )
+
+    with pg_factory() as session:
+        with pytest.raises(RuntimeError, match="force outer transaction rollback"):
+            with session.begin():
+                result = apply_portfolio_execution_in_session(
+                    session, owner_id, owner_id, trade
+                )
+                assert result.position.quantity == Decimal("4")
+                assert session.in_transaction()
+                raise RuntimeError("force outer transaction rollback")
+
+    with pg_factory() as verify:
+        assert verify.get(TradeExecutionModel, trade.execution_id) is None
+        assert verify.scalar(
+            select(PortfolioLotModel.id).where(
+                PortfolioLotModel.opened_by_execution_id == trade.execution_id
+            )
+        ) is None
+        assert verify.scalar(
+            select(AuditEventModel.id).where(
+                AuditEventModel.owner_id == owner_id,
+                AuditEventModel.aggregate_id == trade.execution_id,
+                AuditEventModel.event_type == "portfolio.trade_execution.recorded",
+            )
+        ) is None
 
 
 def test_service_rejects_execution_id_payload_reuse(pg_factory):

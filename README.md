@@ -428,3 +428,9 @@ Aurelius now has owner-scoped investment portfolios, immutable trade-execution a
 The ledger posting layer now also exposes `post_journal_in_session(session, command, idempotency_key)`. This composition primitive requires an active caller-owned transaction and never commits, rolls back, closes, or retries that session. The existing `post_journal(...)` API remains as a transaction-owning wrapper. This is the required foundation for a future trade-settlement service to persist holdings, cash journals, fees, FX legs, and audit records in one transaction.
 
 This is an enabling refactor, not completed trade settlement: the portfolio execution service is not yet coupled to cash accounting. No trading API, broker connection, order placement, cash movement, or production operation is enabled. See `docs/architecture/FOUNDATION_0.6_PORTFOLIO_LOT_PERSISTENCE.md` and the session-bound posting tests.
+
+## Foundation 0.6 — caller-owned portfolio transactions
+
+The portfolio lot execution layer now exposes `apply_portfolio_execution_in_session(session, owner_id, actor_id, execution, ...)` alongside the original transaction-owning wrapper. The new primitive requires an active PostgreSQL transaction and does not commit, roll back, close, or retry the caller's session. This makes portfolio facts and ledger journals composable under one transaction coordinator. A PostgreSQL regression verifies that rolling back the caller transaction removes the execution, acquisition lot, and audit event together.
+
+The two session-bound primitives are now available as building blocks; the actual coordinator that writes a trade and its corresponding cash/fee/FX journals together is still the next step. See PR #31. No public trading endpoint is enabled.

@@ -142,8 +142,8 @@ def _rebuild_book(
     return book, applications, list(rows)
 
 
-def apply_portfolio_execution(
-    session_factory: Callable[[], Session],
+def apply_portfolio_execution_in_session(
+    session: Session,
     owner_id: int,
     actor_id: int,
     execution: TradeExecution,
@@ -151,11 +151,11 @@ def apply_portfolio_execution(
     cost_basis_method: CostBasisMethod = CostBasisMethod.FIFO,
     specific_lot_id: UUID | None = None,
 ) -> PersistedTradeResult:
-    """Atomically record a fill and its immutable lot/allocation facts.
+    """Record an execution inside a caller-owned PostgreSQL transaction.
 
-    The service serializes requests by execution UUID and then by position.
-    Ordinary posting rejects late-arriving fills; a separate deterministic
-    rebuild/correction workflow must handle out-of-order broker imports.
+    The caller owns commit/rollback. This function never creates or closes a
+    Session and never commits, rolls back, or retries. Use it when the trade,
+    cash journal, fees, FX legs, and audit facts must share one atomic boundary.
     """
     if actor_id != owner_id:
         raise PortfolioScopeError("actor must match the authenticated owner in v1")
@@ -167,240 +167,261 @@ def apply_portfolio_execution(
         raise PortfolioAccountingError("specific_lot_id is only valid with SPECIFIC method")
 
     request_hash = _request_hash(execution, cost_basis_method, specific_lot_id)
+    if not session.in_transaction():
+        raise RuntimeError("apply_portfolio_execution_in_session requires an active transaction")
+    if session.bind is None or session.bind.dialect.name != "postgresql":
+        raise RuntimeError("portfolio execution persistence requires PostgreSQL")
 
-    with session_factory() as session:
-        if session.bind is None or session.bind.dialect.name != "postgresql":
-            raise RuntimeError("portfolio execution persistence requires PostgreSQL")
+    # A global execution lock handles the same execution UUID racing
+    # across different position keys; the row lock below serializes
+    # competing fills for one long-only position.
+    session.execute(
+        select(
+            func.pg_advisory_xact_lock(
+                func.hashtextextended(str(execution.execution_id), 0)
+            )
+        )
+    )
 
-        with session.begin():
-            # A global execution lock handles the same execution UUID racing
-            # across different position keys; the row lock below serializes
-            # competing fills for one long-only position.
-            session.execute(
-                select(
-                    func.pg_advisory_xact_lock(
-                        func.hashtextextended(str(execution.execution_id), 0)
-                    )
+    portfolio = session.get(InvestmentPortfolioModel, execution.portfolio_id)
+    account = session.get(FinancialAccountModel, execution.account_id)
+    instrument = session.get(InstrumentDefinitionModel, execution.instrument_id)
+    if portfolio is None or portfolio.owner_id != owner_id:
+        raise PortfolioScopeError("portfolio is not owned by the authenticated user")
+    if account is None or account.owner_id != owner_id:
+        raise PortfolioScopeError("brokerage account is not owned by the authenticated user")
+    if instrument is None:
+        raise PortfolioScopeError("instrument is unknown")
+
+    existing = session.get(TradeExecutionModel, execution.execution_id)
+    if existing is not None:
+        if existing.owner_id != owner_id or existing.request_hash != request_hash:
+            raise ExecutionIdConflict(
+                "execution ID was reused by another owner or with a different payload"
+            )
+        # Replays use the exact historical currency definition already
+        # attached to the execution, even if that currency was later withdrawn.
+        currency = session.get(
+            CurrencyDefinitionModel, existing.quote_currency_definition_id
+        )
+        if currency is None or currency.code != execution.quote_currency_code:
+            raise PortfolioPersistenceError(
+                "stored execution currency snapshot is unavailable or inconsistent"
+            )
+    else:
+        if portfolio.status != "ACTIVE":
+            raise PortfolioScopeError("portfolio is archived")
+        if account.status != "OPEN" or account.account_type != "ASSET":
+            raise PortfolioScopeError("brokerage account must be an open asset account")
+        if instrument.status != "ACTIVE":
+            raise PortfolioScopeError("instrument is inactive")
+        # Keep one immutable currency-definition snapshot per position.
+        # A later ISO release must not split one holding into two position keys.
+        currency = session.scalars(
+            select(CurrencyDefinitionModel)
+            .join(
+                TradeExecutionModel,
+                TradeExecutionModel.quote_currency_definition_id
+                == CurrencyDefinitionModel.id,
+            )
+            .where(
+                TradeExecutionModel.owner_id == owner_id,
+                TradeExecutionModel.portfolio_id == execution.portfolio_id,
+                TradeExecutionModel.account_id == execution.account_id,
+                TradeExecutionModel.instrument_id == execution.instrument_id,
+                CurrencyDefinitionModel.code == execution.quote_currency_code,
+            )
+            .order_by(TradeExecutionModel.executed_at.asc())
+            .limit(1)
+        ).first()
+        if currency is None:
+            currency = session.scalars(
+                select(CurrencyDefinitionModel).where(
+                    CurrencyDefinitionModel.code == execution.quote_currency_code,
+                    CurrencyDefinitionModel.registry_list == "one",
+                    CurrencyDefinitionModel.withdrawal_key == "",
+                    CurrencyDefinitionModel.fund.is_(False),
+                    CurrencyDefinitionModel.minor_unit_exponent.is_not(None),
                 )
+                .order_by(CurrencyDefinitionModel.published_on.desc())
+            ).first()
+        if currency is None:
+            raise PortfolioScopeError(
+                "quote currency is not an eligible current cash currency"
             )
 
-            portfolio = session.get(InvestmentPortfolioModel, execution.portfolio_id)
-            account = session.get(FinancialAccountModel, execution.account_id)
-            instrument = session.get(InstrumentDefinitionModel, execution.instrument_id)
-            if portfolio is None or portfolio.owner_id != owner_id:
-                raise PortfolioScopeError("portfolio is not owned by the authenticated user")
-            if account is None or account.owner_id != owner_id:
-                raise PortfolioScopeError("brokerage account is not owned by the authenticated user")
-            if instrument is None:
-                raise PortfolioScopeError("instrument is unknown")
+    lock_values = {
+        "owner_id": owner_id,
+        "portfolio_id": execution.portfolio_id,
+        "account_id": execution.account_id,
+        "instrument_id": execution.instrument_id,
+        "quote_currency_definition_id": currency.id,
+        "lock_version": 0,
+    }
+    session.execute(
+        pg_insert(PortfolioPositionLockModel)
+        .values(**lock_values)
+        .on_conflict_do_nothing(
+            index_elements=[
+                PortfolioPositionLockModel.owner_id,
+                PortfolioPositionLockModel.portfolio_id,
+                PortfolioPositionLockModel.account_id,
+                PortfolioPositionLockModel.instrument_id,
+                PortfolioPositionLockModel.quote_currency_definition_id,
+            ]
+        )
+    )
+    position_lock = session.scalar(
+        select(PortfolioPositionLockModel)
+        .where(
+            PortfolioPositionLockModel.owner_id == owner_id,
+            PortfolioPositionLockModel.portfolio_id == execution.portfolio_id,
+            PortfolioPositionLockModel.account_id == execution.account_id,
+            PortfolioPositionLockModel.instrument_id == execution.instrument_id,
+            PortfolioPositionLockModel.quote_currency_definition_id == currency.id,
+        )
+        .with_for_update()
+    )
+    if position_lock is None:
+        raise PortfolioPersistenceError("failed to acquire position serialization lock")
 
-            existing = session.get(TradeExecutionModel, execution.execution_id)
-            if existing is not None:
-                if existing.owner_id != owner_id or existing.request_hash != request_hash:
-                    raise ExecutionIdConflict(
-                        "execution ID was reused by another owner or with a different payload"
-                    )
-                # Replays use the exact historical currency definition already
-                # attached to the execution, even if that currency was later withdrawn.
-                currency = session.get(
-                    CurrencyDefinitionModel, existing.quote_currency_definition_id
-                )
-                if currency is None or currency.code != execution.quote_currency_code:
-                    raise PortfolioPersistenceError(
-                        "stored execution currency snapshot is unavailable or inconsistent"
-                    )
-            else:
-                if portfolio.status != "ACTIVE":
-                    raise PortfolioScopeError("portfolio is archived")
-                if account.status != "OPEN" or account.account_type != "ASSET":
-                    raise PortfolioScopeError("brokerage account must be an open asset account")
-                if instrument.status != "ACTIVE":
-                    raise PortfolioScopeError("instrument is inactive")
-                # Keep one immutable currency-definition snapshot per position.
-                # A later ISO release must not split one holding into two position keys.
-                currency = session.scalars(
-                    select(CurrencyDefinitionModel)
-                    .join(
-                        TradeExecutionModel,
-                        TradeExecutionModel.quote_currency_definition_id
-                        == CurrencyDefinitionModel.id,
-                    )
-                    .where(
-                        TradeExecutionModel.owner_id == owner_id,
-                        TradeExecutionModel.portfolio_id == execution.portfolio_id,
-                        TradeExecutionModel.account_id == execution.account_id,
-                        TradeExecutionModel.instrument_id == execution.instrument_id,
-                        CurrencyDefinitionModel.code == execution.quote_currency_code,
-                    )
-                    .order_by(TradeExecutionModel.executed_at.asc())
-                    .limit(1)
-                ).first()
-                if currency is None:
-                    currency = session.scalars(
-                        select(CurrencyDefinitionModel).where(
-                            CurrencyDefinitionModel.code == execution.quote_currency_code,
-                            CurrencyDefinitionModel.registry_list == "one",
-                            CurrencyDefinitionModel.withdrawal_key == "",
-                            CurrencyDefinitionModel.fund.is_(False),
-                            CurrencyDefinitionModel.minor_unit_exponent.is_not(None),
-                        )
-                        .order_by(CurrencyDefinitionModel.published_on.desc())
-                    ).first()
-                if currency is None:
-                    raise PortfolioScopeError(
-                        "quote currency is not an eligible current cash currency"
-                    )
+    book, applications, history = _rebuild_book(
+        session,
+        owner_id,
+        execution.portfolio_id,
+        execution.account_id,
+        execution.instrument_id,
+        currency.id,
+        execution.quote_currency_code,
+    )
 
-            lock_values = {
-                "owner_id": owner_id,
-                "portfolio_id": execution.portfolio_id,
-                "account_id": execution.account_id,
-                "instrument_id": execution.instrument_id,
-                "quote_currency_definition_id": currency.id,
-                "lock_version": 0,
-            }
-            session.execute(
-                pg_insert(PortfolioPositionLockModel)
-                .values(**lock_values)
-                .on_conflict_do_nothing(
-                    index_elements=[
-                        PortfolioPositionLockModel.owner_id,
-                        PortfolioPositionLockModel.portfolio_id,
-                        PortfolioPositionLockModel.account_id,
-                        PortfolioPositionLockModel.instrument_id,
-                        PortfolioPositionLockModel.quote_currency_definition_id,
-                    ]
-                )
-            )
-            position_lock = session.scalar(
-                select(PortfolioPositionLockModel)
-                .where(
-                    PortfolioPositionLockModel.owner_id == owner_id,
-                    PortfolioPositionLockModel.portfolio_id == execution.portfolio_id,
-                    PortfolioPositionLockModel.account_id == execution.account_id,
-                    PortfolioPositionLockModel.instrument_id == execution.instrument_id,
-                    PortfolioPositionLockModel.quote_currency_definition_id == currency.id,
-                )
-                .with_for_update()
-            )
-            if position_lock is None:
-                raise PortfolioPersistenceError("failed to acquire position serialization lock")
-
-            book, applications, history = _rebuild_book(
-                session,
-                owner_id,
-                execution.portfolio_id,
-                execution.account_id,
-                execution.instrument_id,
-                currency.id,
-                execution.quote_currency_code,
+    if existing is not None:
+        prior_application = applications.get(execution.execution_id)
+        if prior_application is None:
+            raise PortfolioPersistenceError("idempotent execution was not found in its position history")
+        application = replace(prior_application, replayed=True)
+    else:
+        if history and execution.executed_at <= history[-1].executed_at:
+            raise OutOfOrderExecution(
+                "execution timestamp is not later than the latest recorded fill; use the explicit rebuild workflow"
             )
 
-            if existing is not None:
-                prior_application = applications.get(execution.execution_id)
-                if prior_application is None:
-                    raise PortfolioPersistenceError("idempotent execution was not found in its position history")
-                application = replace(prior_application, replayed=True)
-            else:
-                if history and execution.executed_at <= history[-1].executed_at:
-                    raise OutOfOrderExecution(
-                        "execution timestamp is not later than the latest recorded fill; use the explicit rebuild workflow"
-                    )
+        application = book.apply(
+            execution,
+            cost_basis_method=cost_basis_method,
+            specific_lot_id=specific_lot_id,
+        )
+        row = TradeExecutionModel(
+            id=execution.execution_id,
+            owner_id=owner_id,
+            portfolio_id=execution.portfolio_id,
+            account_id=execution.account_id,
+            instrument_id=execution.instrument_id,
+            quote_currency_definition_id=currency.id,
+            side=execution.side.value.upper(),
+            quantity=execution.quantity,
+            unit_price=execution.unit_price,
+            fee=execution.fee,
+            executed_at=execution.executed_at,
+            source=execution.source,
+            cost_basis_method=cost_basis_method.value,
+            specific_lot_id=specific_lot_id,
+            request_hash=request_hash,
+            created_by=actor_id,
+        )
+        session.add(row)
+        session.flush()
 
-                application = book.apply(
-                    execution,
-                    cost_basis_method=cost_basis_method,
-                    specific_lot_id=specific_lot_id,
-                )
-                row = TradeExecutionModel(
-                    id=execution.execution_id,
+        if execution.side is TradeSide.BUY:
+            opened_lot = next(
+                lot for lot in book.lots if lot.lot_id == application.opened_lot_id
+            )
+            session.add(
+                PortfolioLotModel(
+                    id=opened_lot.lot_id,
                     owner_id=owner_id,
                     portfolio_id=execution.portfolio_id,
                     account_id=execution.account_id,
                     instrument_id=execution.instrument_id,
                     quote_currency_definition_id=currency.id,
-                    side=execution.side.value.upper(),
-                    quantity=execution.quantity,
-                    unit_price=execution.unit_price,
-                    fee=execution.fee,
-                    executed_at=execution.executed_at,
-                    source=execution.source,
-                    cost_basis_method=cost_basis_method.value,
-                    specific_lot_id=specific_lot_id,
-                    request_hash=request_hash,
-                    created_by=actor_id,
+                    opened_by_execution_id=execution.execution_id,
+                    opened_at=execution.executed_at,
+                    original_quantity=opened_lot.original_quantity,
+                    original_cost=opened_lot.original_cost,
                 )
-                session.add(row)
-                session.flush()
-
-                if execution.side is TradeSide.BUY:
-                    opened_lot = next(
-                        lot for lot in book.lots if lot.lot_id == application.opened_lot_id
-                    )
-                    session.add(
-                        PortfolioLotModel(
-                            id=opened_lot.lot_id,
-                            owner_id=owner_id,
-                            portfolio_id=execution.portfolio_id,
-                            account_id=execution.account_id,
-                            instrument_id=execution.instrument_id,
-                            quote_currency_definition_id=currency.id,
-                            opened_by_execution_id=execution.execution_id,
-                            opened_at=execution.executed_at,
-                            original_quantity=opened_lot.original_quantity,
-                            original_cost=opened_lot.original_cost,
-                        )
-                    )
-                else:
-                    session.add_all(
-                        [
-                            LotDisposalAllocationModel(
-                                id=uuid4(),
-                                owner_id=owner_id,
-                                portfolio_id=execution.portfolio_id,
-                                account_id=execution.account_id,
-                                instrument_id=execution.instrument_id,
-                                quote_currency_definition_id=currency.id,
-                                disposal_execution_id=execution.execution_id,
-                                lot_id=item.lot_id,
-                                quantity=item.quantity,
-                                cost_basis=item.cost_basis,
-                                gross_proceeds=item.gross_proceeds,
-                                allocated_sale_fee=item.allocated_sale_fee,
-                                net_proceeds=item.net_proceeds,
-                                realized_gain_loss=item.realized_gain_loss,
-                            )
-                            for item in application.allocations
-                        ]
-                    )
-
-                session.add(
-                    AuditEventModel(
+            )
+        else:
+            session.add_all(
+                [
+                    LotDisposalAllocationModel(
                         id=uuid4(),
                         owner_id=owner_id,
-                        actor_id=actor_id,
-                        event_type="portfolio.trade_execution.recorded",
-                        aggregate_type="portfolio_trade_execution",
-                        aggregate_id=execution.execution_id,
-                        payload={
-                            "portfolio_id": str(execution.portfolio_id),
-                            "account_id": str(execution.account_id),
-                            "instrument_id": str(execution.instrument_id),
-                            "side": execution.side.value,
-                            "quantity": str(execution.quantity),
-                            "unit_price": str(execution.unit_price),
-                            "quote_currency_code": execution.quote_currency_code,
-                            "fee": str(execution.fee),
-                            "cost_basis_method": cost_basis_method.value,
-                        },
+                        portfolio_id=execution.portfolio_id,
+                        account_id=execution.account_id,
+                        instrument_id=execution.instrument_id,
+                        quote_currency_definition_id=currency.id,
+                        disposal_execution_id=execution.execution_id,
+                        lot_id=item.lot_id,
+                        quantity=item.quantity,
+                        cost_basis=item.cost_basis,
+                        gross_proceeds=item.gross_proceeds,
+                        allocated_sale_fee=item.allocated_sale_fee,
+                        net_proceeds=item.net_proceeds,
+                        realized_gain_loss=item.realized_gain_loss,
                     )
-                )
-                position_lock.lock_version += 1
-
-            position = book.position(
-                execution.portfolio_id,
-                execution.account_id,
-                execution.instrument_id,
-                execution.quote_currency_code,
+                    for item in application.allocations
+                ]
             )
-            return PersistedTradeResult(application=application, position=position)
+
+        session.add(
+            AuditEventModel(
+                id=uuid4(),
+                owner_id=owner_id,
+                actor_id=actor_id,
+                event_type="portfolio.trade_execution.recorded",
+                aggregate_type="portfolio_trade_execution",
+                aggregate_id=execution.execution_id,
+                payload={
+                    "portfolio_id": str(execution.portfolio_id),
+                    "account_id": str(execution.account_id),
+                    "instrument_id": str(execution.instrument_id),
+                    "side": execution.side.value,
+                    "quantity": str(execution.quantity),
+                    "unit_price": str(execution.unit_price),
+                    "quote_currency_code": execution.quote_currency_code,
+                    "fee": str(execution.fee),
+                    "cost_basis_method": cost_basis_method.value,
+                },
+            )
+        )
+        position_lock.lock_version += 1
+
+    position = book.position(
+        execution.portfolio_id,
+        execution.account_id,
+        execution.instrument_id,
+        execution.quote_currency_code,
+    )
+    return PersistedTradeResult(application=application, position=position)
+
+
+def apply_portfolio_execution(
+    session_factory: Callable[[], Session],
+    owner_id: int,
+    actor_id: int,
+    execution: TradeExecution,
+    *,
+    cost_basis_method: CostBasisMethod = CostBasisMethod.FIFO,
+    specific_lot_id: UUID | None = None,
+) -> PersistedTradeResult:
+    """Transaction-owning wrapper for standalone execution recording."""
+    with session_factory() as session:
+        with session.begin():
+            return apply_portfolio_execution_in_session(
+                session,
+                owner_id,
+                actor_id,
+                execution,
+                cost_basis_method=cost_basis_method,
+                specific_lot_id=specific_lot_id,
+            )
