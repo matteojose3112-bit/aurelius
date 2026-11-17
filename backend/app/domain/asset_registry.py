@@ -90,10 +90,12 @@ class UnitRegistry:
     def conversion_ratio(self, source_code: str, target_code: str) -> Fraction:
         source = self.get(source_code)
         target = self.get(target_code)
-        if source.dimension != target.dimension:
-            raise ValueError("unit dimensions do not match")
+        if source_code == target_code:
+            return Fraction(1, 1)
         if source.context_required or target.context_required:
             raise ValueError("unit conversion requires instrument/commodity context")
+        if source.dimension != target.dimension:
+            raise ValueError("unit dimensions do not match")
         if source.base_unit_code != target.base_unit_code:
             raise ValueError("units do not share a canonical base unit")
         return source.conversion_to_base / target.conversion_to_base
