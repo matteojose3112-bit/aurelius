@@ -1,6 +1,6 @@
 # Foundation 0.3 — Global PostgreSQL Persistence Architecture
 
-**Status:** SQLAlchemy models and Alembic migration implemented on a draft feature branch; PostgreSQL 16 CI validation in progress. API and posting application service are not yet implemented.
+**Status:** Currency registry, SQLAlchemy persistence models, Alembic migration, PostgreSQL guards, atomic posting/reversal service, and versioned FastAPI routes are implemented on stacked draft branches. PostgreSQL 16 integration CI is passing; hosted deployment and production migration remain out of scope.
 
 **Depends on:** Foundation 0.1 Money, Foundation 0.2 Accounts & Ledger, and [ADR-003](ADR-003-canonical-money-storage.md).
 
@@ -108,7 +108,7 @@ At transaction commit:
 8. Accounting periods cannot overlap for one owner.
 9. Idempotency identity and final response are protected.
 
-The posting service must lock affected account rows in sorted UUID order, re-check owner/status/currency/period/reversal eligibility, insert header and postings, complete the idempotency result, and commit once. That service is the next implementation milestone; the database triggers are already represented in the migration but still require PostgreSQL CI validation.
+The posting service locks affected account rows in sorted UUID order, re-checks owner/status/currency/period/reversal eligibility, inserts header and postings, completes the idempotency result, and commits once. It implements same-key replay, changed-payload conflict, exact reversal, and bounded retry for transient PostgreSQL failures using the same key. PostgreSQL 16 CI validates the database guards and service concurrency behavior.
 
 ## 7. Global markets domain boundaries
 
@@ -126,13 +126,19 @@ See [Global Asset Coverage](FOUNDATION_0.3_GLOBAL_ASSET_COVERAGE.md).
 
 ## 8. API and application-service gates
 
-The future journal API uses an Idempotency-Key header. Owner and actor are derived from authenticated context. Amounts are integer minor-unit strings plus currency or canonical decimal strings plus currency. JSON floats are prohibited.
+Implemented FastAPI routes:
+- GET /v1/currencies — current ISO monetary units eligible for ordinary cash accounts.
+- POST/GET /v1/accounts — create and list owner-scoped financial accounts.
+- GET /v1/accounts/{account_id}/balance — derive native-currency balances from immutable postings as of an effective date.
+- POST /v1/ledger/journals — create a journal with an Idempotency-Key header.
+- GET /v1/ledger/journals and GET /v1/ledger/journals/{journal_id} — owner-scoped journal reads.
+- POST /v1/ledger/journals/{journal_id}/reversal — exact idempotent reversal.
 
-The account-balance API derives balances from immutable postings; cached values are never authoritative. API routes are intentionally not implemented until PostgreSQL persistence tests pass.
+Owner and actor are derived from authenticated JWT context. Amounts are canonical integer minor-unit strings; JSON floats are prohibited. Account balances are derived from immutable postings and use the owner's configured IANA accounting timezone for default as-of dates. Ledger write/read routes fail closed unless the configured database is PostgreSQL. The currency registry seed command is dry-run by default; --apply is required to write and --allow-production is additionally required when ENVIRONMENT=production.
 
 ## 9. PostgreSQL verification plan
 
-The disposable PostgreSQL 16 CI job is being added to validate:
+The disposable PostgreSQL 16 CI job validates:
 - Empty-database Alembic migration and PostgreSQL-specific trigger creation.
 - Balanced and unbalanced journals, single-posting rejection, closed-account rejection, and exact reversal symmetry.
 - Fractional minor-unit rejection and the 38-digit boundary.
@@ -140,14 +146,14 @@ The disposable PostgreSQL 16 CI job is being added to validate:
 - Same-key concurrent insert serialization and atomic rollback.
 - Owner/currency composite FK enforcement and period-overlap exclusion.
 
-More exhaustive posting-service tests will cover same-key/same-payload replay, changed-payload conflict, competing reversals, close/post races, retry after unknown commit outcome, and failure injection at each transaction stage.
+PostgreSQL CI currently passes 26 integration tests covering database invariants, posting-service replay/conflict, competing reversals, close/post races, failure injection/rollback, and the authenticated API path. Additional work will expand market-data/provider contract tests and global instrument/asset persistence.
 
 ## 10. Release gates
 
 - Auth/FK inspection is complete: INTEGER users.id.
 - Currency registry implementation and SQLite tests are in place.
 - SQLAlchemy models and Alembic migration are implemented on a draft branch.
-- PostgreSQL 16 CI validation must pass before the posting application service is built.
+- PostgreSQL 16 CI passes for the migration, persistence guards, posting service, and versioned API integration.
 - Actual hosted database version, backup/restore, legacy reconciliation, and reversible production migration remain unverified and out of scope.
 
 
