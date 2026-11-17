@@ -10,16 +10,16 @@ depends_on = None
 
 
 def upgrade():
-    op.create_unique_constraint(
+    op.create_index(
         "uq_market_observations_provider_record",
         "market_observations",
         ["provider_source_id", "source_record_id", "observation_type", "instrument_id"],
+        unique=True,
     )
 
 
 def downgrade():
-    op.drop_constraint(
+    op.drop_index(
         "uq_market_observations_provider_record",
-        "market_observations",
-        type_="unique",
+        table_name="market_observations",
     )
