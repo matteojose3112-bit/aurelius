@@ -447,3 +447,14 @@ All notable project changes are documented here.
 - Provider-neutral contracts and licensed ingestion are implemented and CI-validated. No live provider adapter, external network fetch, API key, subscription, production source, or production data write was configured.
 
 - Added current provider candidate review covering ECB, World Bank, Twelve Data, CoinGecko, Alpha Vantage, FRED, and Nasdaq Data Link, including current plan limits and data-rights cautions. Recommended ECB reference FX first; no subscriptions or integrations.
+
+## Unreleased — Foundation 0.6 session-bound ledger posting — 2026-11-17
+
+### Added
+- Added `post_journal_in_session`, a caller-owned-session primitive that writes the journal, postings, audit event, and idempotency response without committing or closing the transaction.
+- Preserved `post_journal` as the transaction-owning, bounded-retry wrapper around the session-bound primitive.
+- Added a PostgreSQL integration regression proving an outer transaction rollback removes the journal, postings, audit event, and idempotency claim together.
+
+### Design boundary
+- This is the transaction-composition foundation for trade settlement, not yet the trade-to-ledger integration itself. The portfolio lot service still records investment-side facts separately and must be refactored to accept a caller-owned session before a coordinator can commit both domains atomically.
+- No trading API, brokerage connection, order placement, production data write, deployment, or infrastructure change was performed.
