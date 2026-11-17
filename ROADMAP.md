@@ -397,3 +397,15 @@ Implementation branch: feat/aurelius-foundation-0.3-ledger-persistence-models. N
 - [x] Add PostgreSQL integration tests for balanced/unbalanced journals, reversal symmetry, closed accounts, append-only protection, fractional precision, 38-digit bounds, rollback, and concurrent idempotency uniqueness.
 - [x] Latest full CI run passed: PostgreSQL 16 migration + 16 integration tests, SQLite backend suite, frontend tests, and frontend build.
 - [ ] Expand concurrency coverage to posting-service replay/conflict semantics, competing reversals, account close/post races, and timeout-after-commit retry.
+
+
+## Foundation 0.3 — atomic posting engine
+
+- [x] Add server-owned PostJournalCommand and validated integer PostingLine inputs.
+- [x] Claim idempotency key and persist journal, postings, audit event, and response atomically.
+- [x] Lock account rows in deterministic UUID order and re-check owner/currency/open status.
+- [x] Enforce configured open accounting periods; when no periods are configured, period policy remains inactive.
+- [x] Implement same-key/same-payload replay and changed-payload conflict.
+- [x] Implement exact reversal service with source-journal row locking and one-reversal protection.
+- [ ] Validate posting service with PostgreSQL 16 same-key concurrency, competing reversals, rollback/retry, and closed-period tests.
+- [ ] Integrate service into API routes only after the service test suite passes.
