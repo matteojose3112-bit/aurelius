@@ -387,3 +387,5 @@ This is domain groundwork, not yet a persisted instrument master or market-data 
 The reference catalog also includes representative equity issuers, sovereign debt, ETFs, Bitcoin/Ether, real estate, prediction events, mortgage liabilities, benchmarks, FX pairs, private equity, and derivatives. These are identity/ontology examples only, not market listings or prices.
 
 The domain now also defines MIC/timezone-aware market venues, time-bounded venue listings, and explicit futures/derivative, bond, and prediction-contract specifications. These contracts retain lifecycle dates, units, tick/contract terms, coupon/day-count terms, resolution sources, and settlement rules.
+
+Market observations and Aurelius forecasts are also separate domain records: observations retain source and observed/retrieved timestamps, while forecasts retain model/version, probability, horizon, evidence, and later resolution. Market-implied probabilities are not treated as ground truth or as Aurelius model forecasts.
