@@ -23,6 +23,7 @@ class ProviderCapabilities:
     instrument_types: tuple[str, ...]
     region_codes: tuple[str, ...] = ()
     venue_mics: tuple[str, ...] = ()
+    global_region_coverage: bool = False
     delay_class: str = "historical"
     supports_historical: bool = True
     supports_intraday: bool = False
@@ -129,6 +130,7 @@ class ProviderLicensePolicy:
     terms_version: str
     allowed_purposes: tuple[str, ...]
     allowed_regions: tuple[str, ...] = ()
+    global_region_coverage: bool = False
     retention_days: int | None = None
     attribution_required: bool = True
     redistribution_allowed: bool = False
@@ -195,8 +197,9 @@ class ProviderRegistry:
                 continue
             if request.instrument_type and request.instrument_type not in capabilities.instrument_types:
                 continue
-            if request.region_code and request.region_code not in capabilities.region_codes:
-                continue
+            if request.region_code and not capabilities.global_region_coverage:
+                if request.region_code not in capabilities.region_codes:
+                    continue
             if request.venue_mic and request.venue_mic not in capabilities.venue_mics:
                 continue
             if request.granularity == "realtime" and not capabilities.supports_realtime:
