@@ -7,7 +7,7 @@
 - Added PostgreSQL tests for buy/sell, realized gain/loss, idempotency, oversell rollback, and competing oversell attempts.
 
 ### Validation and boundaries
-- Current-head PostgreSQL service/concurrency CI is pending.
+- GitHub Actions run #410 passed: PostgreSQL 16 integration 42 passed, backend suite passed, frontend tests/build passed, and both SQLite and PostgreSQL Alembic upgrades passed.
 - The service records already-executed fills only. No broker orders, cash-ledger coupling, tax engine, public portfolio API, hosted database migration, Render change, or deployment.
 
 ## [Unreleased] — Foundation 0.6 Portfolio Lot Persistence — 2026-11-17
