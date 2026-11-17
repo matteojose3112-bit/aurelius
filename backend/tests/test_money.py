@@ -71,3 +71,31 @@ def test_malformed_decimal_string_is_rejected():
 def test_boolean_amount_is_rejected():
     with pytest.raises(TypeError, match="never float"):
         Money(True, "USD")
+
+
+@pytest.mark.parametrize(
+    ("minor_units", "currency", "expected"),
+    [
+        (123456, "COP", "1234.56"),
+        (1234, "JPY", "1234"),
+        (1234, "KWD", "1.234"),
+        (-5, "USD", "-0.05"),
+        (0, "CAD", "0.00"),
+    ],
+)
+def test_from_minor_units_round_trips_exactly(minor_units, currency, expected):
+    money = Money.from_minor_units(minor_units, currency)
+    assert money.to_decimal_string() == expected
+    assert money.minor_units == minor_units
+
+
+@pytest.mark.parametrize("minor_units", [True, 1.5, "100"])
+def test_from_minor_units_rejects_non_integer_values(minor_units):
+    with pytest.raises(TypeError, match="minor units must be an integer"):
+        Money.from_minor_units(minor_units, "USD")
+
+
+def test_negative_zero_has_canonical_serialization():
+    money = Money.from_decimal_string("-0.004", "USD")
+    assert money.to_decimal_string() == "0.00"
+    assert money.minor_units == 0
