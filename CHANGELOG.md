@@ -289,3 +289,14 @@ All notable project changes are documented here.
 
 ### Status
 - Foundation 0.3 is design-only. No SQLAlchemy models, Alembic migrations, API routes, databases, production data, deployments, or Ollama runtime integration were created.
+
+
+## Unreleased — Foundation 0.3 global groundwork — 2026-11-17
+
+### Added
+- Inspected legacy authentication and migration model; documented INTEGER users.id ownership compatibility.
+- Selected PostgreSQL 16 as a disposable CI baseline (hosted database version remains unverified) and deferred constraint triggers for commit-time ledger invariants.
+- Expanded the persistence design for international users, ISO 4217 registry versioning, historical currency definitions, FX provenance, global instruments/listings, MIC venues, timezone, locale, and jurisdiction separation.
+
+### Status
+- This commit records architecture decisions and inspection only. No ORM models, migrations, API endpoints, local/hosted database changes, Render operations, or deployments were performed.
