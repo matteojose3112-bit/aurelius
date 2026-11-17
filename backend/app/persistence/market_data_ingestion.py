@@ -224,9 +224,10 @@ def ingest_market_observations(
                             MarketObservationModel.instrument_id,
                         ]
                     )
+                    .returning(MarketObservationModel.id)
                 )
                 result = session.execute(statement)
-                inserted += result.rowcount or 0
+                inserted += 1 if result.scalar_one_or_none() is not None else 0
 
     return IngestionResult(
         provider_key=adapter.capabilities.provider_key,
