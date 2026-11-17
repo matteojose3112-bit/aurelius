@@ -385,3 +385,5 @@ Aurelius is expanding beyond cash accounting into a global multi-asset reference
 This is domain groundwork, not yet a persisted instrument master or market-data feed. The next step is PostgreSQL persistence for assets, instruments, identifiers, venues/MICs, listings, and derivative/bond/prediction contract specifications. No market prices, listings, contract expiries, or trading access are fabricated.
 
 The reference catalog also includes representative equity issuers, sovereign debt, ETFs, Bitcoin/Ether, real estate, prediction events, mortgage liabilities, benchmarks, FX pairs, private equity, and derivatives. These are identity/ontology examples only, not market listings or prices.
+
+The domain now also defines MIC/timezone-aware market venues, time-bounded venue listings, and explicit futures/derivative, bond, and prediction-contract specifications. These contracts retain lifecycle dates, units, tick/contract terms, coupon/day-count terms, resolution sources, and settlement rules.
