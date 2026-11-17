@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.domain.market_data import ForecastRecord, MarketObservation
+from app.domain.market_data import ForecastRecord, ForecastResolution, MarketObservation
 
 
 def test_market_observation_retains_source_and_observation_retrieval_times():
@@ -103,16 +103,20 @@ def test_forecast_record_rejects_float_probability_and_invalid_range():
         )
 
 
-def test_resolved_forecast_requires_outcome_and_resolution_timestamp():
-    generated = datetime(2026, 11, 17, 12, 0, tzinfo=timezone.utc)
-    with pytest.raises(ValueError, match="resolved forecasts require"):
-        ForecastRecord(
+def test_forecast_resolution_is_separate_and_validates_score_and_timestamp():
+    with pytest.raises(ValueError, match="timezone-aware"):
+        ForecastResolution(
             forecast_id=uuid4(),
-            target_id="target",
-            model_id="model",
-            model_version="1",
-            probability=Decimal("0.5"),
-            generated_at=generated,
-            horizon_end=generated + timedelta(days=1),
             resolved_outcome="YES",
+            resolved_at=datetime(2026, 11, 17),
+            scoring_method="brier",
+        )
+
+    with pytest.raises(ValueError, match="between zero and one"):
+        ForecastResolution(
+            forecast_id=uuid4(),
+            resolved_outcome="YES",
+            resolved_at=datetime(2026, 11, 17, tzinfo=timezone.utc),
+            scoring_method="brier",
+            score=Decimal("1.5"),
         )
