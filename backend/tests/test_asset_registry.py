@@ -48,8 +48,12 @@ def test_unit_registry_rejects_binary_float_quantities():
 
 
 def test_default_global_asset_catalog_covers_multiple_commodity_families():
-    classes = {asset.asset_type for asset in ASSET_DEFINITIONS}
-    assert {"precious_metal", "industrial_metal", "energy", "agriculture"} <= classes
+    classes = {asset.asset_class for asset in ASSET_DEFINITIONS}
+    assert {
+        "commodity", "equity_issuer", "fixed_income", "fund", "crypto_asset",
+        "real_estate", "prediction_contract", "liability", "benchmark",
+        "fx_pair", "private_equity", "derivative",
+    } <= classes
     assert DEFAULT_ASSET_REGISTRY.get("commodity.gold").quantity_unit_code == "troy_ounce"
     assert DEFAULT_ASSET_REGISTRY.get("commodity.wti_crude_oil").quantity_unit_code == "barrel"
     assert DEFAULT_ASSET_REGISTRY.get("commodity.natural_gas").quantity_unit_code == "mmbtu"
