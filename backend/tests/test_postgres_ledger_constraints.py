@@ -689,3 +689,89 @@ def test_reverse_service_serializes_competing_reversals(pg_engine, pg_session):
             JournalEntryModel.reversal_of == UUID(original.body["journal_id"])
         )
     ) == 1
+
+
+
+def test_posting_service_rolls_back_after_journal_and_posting_inserts(
+    pg_engine, pg_session, monkeypatch
+):
+    from app.persistence import posting_service as posting_service_module
+
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    command = make_post_command(owner, usd, debit_account, credit_account)
+
+    def injected_failure(*args, **kwargs):
+        raise RuntimeError("injected failure after posting rows were flushed")
+
+    monkeypatch.setattr(posting_service_module, "_journal_response", injected_failure)
+    with pytest.raises(RuntimeError, match="injected failure"):
+        posting_service_module.post_journal(factory, command, "rollback-after-postings")
+
+    assert pg_session.scalar(
+        select(func.count()).select_from(JournalEntryModel).where(
+            JournalEntryModel.owner_id == owner.id
+        )
+    ) == 0
+    assert pg_session.scalar(
+        select(func.count()).select_from(JournalPostingModel)
+    ) == 0
+    assert pg_session.scalar(
+        select(func.count()).select_from(AuditEventModel)
+    ) == 0
+    assert pg_session.scalar(
+        select(func.count()).select_from(IdempotencyRecordModel).where(
+            IdempotencyRecordModel.idempotency_key == "rollback-after-postings"
+        )
+    ) == 0
+
+
+def test_posting_service_serializes_account_close_against_post(
+    pg_engine, pg_session
+):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    command = make_post_command(owner, usd, debit_account, credit_account)
+    account_locked = Event()
+    release_close = Event()
+
+    def close_account():
+        with Session(pg_engine) as close_session:
+            with close_session.begin():
+                account = close_session.execute(
+                    select(FinancialAccountModel)
+                    .where(FinancialAccountModel.id == debit_account.id)
+                    .with_for_update()
+                ).scalar_one()
+                account.status = "CLOSED"
+                account_locked.set()
+                assert release_close.wait(timeout=10)
+
+    def attempt_post():
+        assert account_locked.wait(timeout=10)
+        try:
+            post_journal(factory, command, "close-post-race-key")
+        except AccountClosed:
+            return "closed-account-rejected"
+        return "unexpected-post"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        close_future = pool.submit(close_account)
+        assert account_locked.wait(timeout=10)
+        post_future = pool.submit(attempt_post)
+        release_close.set()
+        close_future.result(timeout=10)
+        assert post_future.result(timeout=20) == "closed-account-rejected"
+
+    assert pg_session.scalar(
+        select(func.count()).select_from(JournalEntryModel).where(
+            JournalEntryModel.owner_id == owner.id
+        )
+    ) == 0
+    assert pg_session.scalar(
+        select(func.count()).select_from(IdempotencyRecordModel).where(
+            IdempotencyRecordModel.idempotency_key == "close-post-race-key"
+        )
+    ) == 0
