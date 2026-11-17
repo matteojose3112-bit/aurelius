@@ -1,7 +1,7 @@
 # Foundation 0.5 — Global Data Provider Candidate Review
 
 **Reviewed:** 2026-11-17  
-**Status:** Research only. No provider selected, connected, paid for, or granted credentials.
+**Status:** Research and adapter prototype. ECB selected for the first narrow FX adapter; no provider is live-connected, paid for, or granted credentials.
 
 ## Executive conclusion
 
@@ -73,3 +73,8 @@ There is no single free, universally licensed provider for all global securities
 Keep the provider adapter framework vendor-neutral. The first live adapter should be ECB reference FX because it has a clear official API and a bounded data scope. World Bank macro datasets are a second candidate only when their individual license is CC BY 4.0 or otherwise explicitly approved. Broad market-data subscriptions remain deferred until the product's actual usage and budget justify them.
 
 No provider API key, paid subscription, external connection, or live data fetch was created during this review.
+
+
+## Prototype decision update
+
+The ECB Data Portal is now the first adapter prototype (daily EUR-base reference FX only). The adapter and its PostgreSQL ingestion path are covered by mocked and integration tests; no live API request has been made. A controlled live smoke test remains a separate validation task. This does not imply coverage of all FX pairs or executable prices.
