@@ -61,7 +61,11 @@ class Money:
 
         exponent = self.CURRENCY_EXPONENTS[currency]
         quantum = Decimal(1).scaleb(-exponent)
-        object.__setattr__(self, "amount", amount.quantize(quantum, rounding=ROUND_HALF_UP))
+        try:
+            normalized = amount.quantize(quantum, rounding=ROUND_HALF_UP)
+        except InvalidOperation as exc:
+            raise ValueError("amount exceeds the supported Decimal precision") from exc
+        object.__setattr__(self, "amount", normalized)
         object.__setattr__(self, "currency", currency)
 
     @classmethod
