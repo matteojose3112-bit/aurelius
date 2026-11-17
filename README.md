@@ -2,7 +2,7 @@
 
 > **Formerly FinTrack.** Aurelius is being developed as an evidence-first financial partner for personal finance, accounting, market research, portfolio analysis, risk assessment, and financial education. The existing FinTrack application is the starting foundation—not a completed Aurelius product.
 
-**Transformation status:** Aurelius planning is merged into `main`; Foundation 0.1 and 0.2 are being developed on separate feature branches. Foundation 0.2 now defines immutable financial accounts, balanced single-currency journal entries, asset transfers, append-only reversals, and accounting golden-case tests. The new Foundation 0.2 head is awaiting CI; do not treat the earlier Foundation 0.1 run #125 as validation of these additions. No API/database integration has been performed. Existing FinTrack application workflows and Render resources remain unchanged.
+**Transformation status:** Aurelius planning is merged into `main`; Foundation 0.1 and 0.2 are being developed on separate feature branches. Foundation 0.2 now defines immutable financial accounts, balanced single-currency journal entries, asset transfers, append-only reversals, and accounting golden-case tests. GitHub Actions run [#136](https://github.com/matteojose3112-bit/aurelius/actions/runs/44185872151) passed backend and frontend jobs for the Foundation 0.2 head. No API/database integration has been performed. Existing FinTrack application workflows and Render resources remain unchanged.
 
 **Operating principle:** deterministic financial calculations and traceable source data come first; AI interprets and challenges evidence, but never invents facts or silently executes financial actions.
 
@@ -10,7 +10,7 @@
 
 - Repository renamed to `matteojose3112-bit/aurelius`; the legacy FinTrack application and Render resource names are retained until separately reviewed.
 - Aurelius transformation strategy and phased roadmap are merged into `main` through PR #13.
-- Foundation 0.1 adds the isolated `Money` primitive and contract. Foundation 0.2 work is on `feat/aurelius-foundation-0.2-accounts-ledger`, adding immutable account identities, a double-entry ledger aggregate, transfers, reversals, and golden-case tests. Latest Foundation 0.2 CI is pending; run #125 validates only the earlier Foundation 0.1 baseline.
+- Foundation 0.1 adds the isolated `Money` primitive and contract. Foundation 0.2 work is on `feat/aurelius-foundation-0.2-accounts-ledger`, adding immutable account identities, a double-entry ledger aggregate, transfers, reversals, and golden-case tests. Foundation 0.2 CI run [#136](https://github.com/matteojose3112-bit/aurelius/actions/runs/44185872151) passed backend compile, Alembic SQLite upgrade, pytest, frontend tests, and production build.
 - No database migration, API contract change, frontend money rewrite, Render change, deployment, paid provider, brokerage connection, or production-data write has occurred.
 - See [Money and Currency Contract](docs/finance/MONEY_CONTRACT.md), [Account and Ledger Contract](docs/finance/ACCOUNT_LEDGER_CONTRACT.md), [ADR-0001](docs/architecture/ADR-0001-financial-core-boundaries.md), and [Foundation status](docs/architecture/FOUNDATION_0.1_STATUS.md).
 
