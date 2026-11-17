@@ -365,3 +365,5 @@ All notable project changes are documented here.
 
 ### Status
 - PostgreSQL 16 migration, persistence, posting service, and initial API integration are validated in CI. No hosted database, registry seed, Render resource, production record, broker, or deployment was touched.
+
+- PostgreSQL 16 API integration now passes 27 tests, including authenticated owner isolation and fail-closed behavior before registry seeding.
