@@ -32,6 +32,16 @@ from app.persistence.instrument_models import (
     UnitDefinitionModel,
 )
 from app.persistence.instrument_registry_seed import seed_global_reference_data
+from app.domain.providers import (
+    MarketDataRequest,
+    ProviderCapabilities,
+    ProviderLicensePolicy,
+    ProviderObservation,
+)
+from app.persistence.market_data_ingestion import (
+    ProviderLicenseError,
+    ingest_market_observations,
+)
 from app.persistence.models import (
     AccountingPeriodModel,
     AuditEventModel,
@@ -1189,3 +1199,159 @@ def test_postgres_bond_and_prediction_minor_units_reject_fractional_values(pg_se
     with pytest.raises(IntegrityError, match="ck_prediction_payout_integral_minor"):
         pg_session.commit()
     pg_session.rollback()
+
+
+
+class FixtureMarketProvider:
+    def __init__(self, capabilities, observations):
+        self._capabilities = capabilities
+        self._observations = tuple(observations)
+        self.fetch_count = 0
+
+    @property
+    def capabilities(self):
+        return self._capabilities
+
+    def fetch(self, request):
+        self.fetch_count += 1
+        return self._observations
+
+
+def make_market_provider_fixture(pg_session):
+    seed_global_reference_data(pg_session)
+    seed_currency_registry(pg_session)
+    usd = pg_session.scalars(
+        select(CurrencyDefinitionModel).where(
+            CurrencyDefinitionModel.code == "USD",
+            CurrencyDefinitionModel.registry_list == "one",
+        )
+    ).one()
+    instrument = InstrumentDefinitionModel(
+        id=uuid4(),
+        instrument_type="future",
+        name="Synthetic commodity future",
+        underlying_asset_id="commodity.wti_crude_oil",
+        quote_currency_definition_id=usd.id,
+        source_id="fixture",
+    )
+    source = ProviderSourceModel(
+        id=uuid4(),
+        provider_key="fixture_market_provider",
+        name="Fixture Market Provider",
+        category="market_data",
+        terms_version="terms-2026-01",
+        rights_scope="internal_research",
+        geographic_coverage=["US"],
+        status="ACTIVE",
+    )
+    pg_session.add_all([instrument, source])
+    pg_session.commit()
+
+    observed = datetime(2026, 11, 17, 14, 0, tzinfo=timezone.utc)
+    capabilities = ProviderCapabilities(
+        provider_key="fixture_market_provider",
+        data_types=("last_price",),
+        asset_classes=("commodity",),
+        instrument_types=("future",),
+        region_codes=("US",),
+        venue_mics=("Z999",),
+        delay_class="delayed",
+        supports_historical=True,
+        rights_scope="internal_research",
+    )
+    request = MarketDataRequest(
+        instrument_ids=(instrument.id,),
+        observation_types=("last_price",),
+        start_at=observed - timedelta(hours=1),
+        end_at=observed + timedelta(hours=1),
+        asset_class="commodity",
+        instrument_type="future",
+        region_code="US",
+        venue_mic="Z999",
+        granularity="daily",
+    )
+    observation = ProviderObservation(
+        source_record_id="fixture-row-0001",
+        instrument_id=instrument.id,
+        observation_type="last_price",
+        value=Decimal("72.25"),
+        observed_at=observed,
+        retrieved_at=observed + timedelta(seconds=2),
+        unit_code="barrel",
+        quote_currency_code="USD",
+        market_session="regular",
+        methodology="fixture-only",
+    )
+    adapter = FixtureMarketProvider(capabilities, (observation,))
+    policy = ProviderLicensePolicy(
+        provider_key="fixture_market_provider",
+        terms_version="terms-2026-01",
+        allowed_purposes=("internal_research",),
+        allowed_regions=("US",),
+        attribution_required=True,
+        redistribution_allowed=False,
+    )
+    return source, adapter, request, policy
+
+
+def test_market_data_ingestion_is_license_aware_and_idempotent(pg_session, pg_engine):
+    source, adapter, request, policy = make_market_provider_fixture(pg_session)
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+
+    first = ingest_market_observations(
+        factory, source.id, adapter, request, policy, purpose="internal_research"
+    )
+    second = ingest_market_observations(
+        factory, source.id, adapter, request, policy, purpose="internal_research"
+    )
+
+    assert (first.received, first.inserted, first.duplicates) == (1, 1, 0)
+    assert (second.received, second.inserted, second.duplicates) == (1, 0, 1)
+    assert adapter.fetch_count == 2
+    assert pg_session.scalar(
+        select(func.count()).select_from(MarketObservationModel)
+    ) == 1
+
+
+def test_market_data_ingestion_rejects_unlicensed_purpose_before_fetch(pg_session, pg_engine):
+    source, adapter, request, policy = make_market_provider_fixture(pg_session)
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    with pytest.raises(ProviderLicenseError, match="purpose is not permitted"):
+        ingest_market_observations(
+            factory,
+            source.id,
+            adapter,
+            request,
+            policy,
+            purpose="redistribution",
+        )
+    assert adapter.fetch_count == 0
+    assert pg_session.scalar(
+        select(func.count()).select_from(MarketObservationModel)
+    ) == 0
+
+
+def test_market_data_ingestion_rejects_provider_rows_outside_request(pg_session, pg_engine):
+    source, adapter, request, policy = make_market_provider_fixture(pg_session)
+    wrong_instrument = ProviderObservation(
+        source_record_id="wrong-instrument-row",
+        instrument_id=uuid4(),
+        observation_type="last_price",
+        value=Decimal("1"),
+        observed_at=request.start_at,
+        retrieved_at=request.start_at,
+    )
+    adapter._observations = (wrong_instrument,)
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    with pytest.raises(Exception, match="outside the request"):
+        ingest_market_observations(
+            factory,
+            source.id,
+            adapter,
+            request,
+            policy,
+            purpose="internal_research",
+        )
+    assert pg_session.scalar(
+        select(func.count()).select_from(MarketObservationModel)
+    ) == 0
