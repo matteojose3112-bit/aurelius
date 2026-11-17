@@ -10,7 +10,7 @@ from decimal import Decimal
 import hashlib
 import json
 from typing import Callable
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -189,22 +189,46 @@ def apply_portfolio_execution(
             instrument = session.get(InstrumentDefinitionModel, execution.instrument_id)
             if portfolio is None or portfolio.owner_id != owner_id:
                 raise PortfolioScopeError("portfolio is not owned by the authenticated user")
-            if account is None or account.owner_id != owner_id or account.status != "OPEN":
-                raise PortfolioScopeError("brokerage account is not owned by the user or is closed")
-            if instrument is None or instrument.status != "ACTIVE":
-                raise PortfolioScopeError("instrument is unknown or inactive")
+            if account is None or account.owner_id != owner_id:
+                raise PortfolioScopeError("brokerage account is not owned by the authenticated user")
+            if instrument is None:
+                raise PortfolioScopeError("instrument is unknown")
 
-            currency = session.scalars(
-                select(CurrencyDefinitionModel).where(
-                    CurrencyDefinitionModel.code == execution.quote_currency_code,
-                    CurrencyDefinitionModel.registry_list == "one",
-                    CurrencyDefinitionModel.withdrawal_key == "",
-                    CurrencyDefinitionModel.fund.is_(False),
-                    CurrencyDefinitionModel.minor_unit_exponent.is_not(None),
+            existing = session.get(TradeExecutionModel, execution.execution_id)
+            if existing is not None:
+                if existing.owner_id != owner_id or existing.request_hash != request_hash:
+                    raise ExecutionIdConflict(
+                        "execution ID was reused by another owner or with a different payload"
+                    )
+                # Replays use the exact historical currency definition already
+                # attached to the execution, even if that currency was later withdrawn.
+                currency = session.get(
+                    CurrencyDefinitionModel, existing.quote_currency_definition_id
                 )
-            ).first()
-            if currency is None:
-                raise PortfolioScopeError("quote currency is not an eligible current cash currency")
+                if currency is None or currency.code != execution.quote_currency_code:
+                    raise PortfolioPersistenceError(
+                        "stored execution currency snapshot is unavailable or inconsistent"
+                    )
+            else:
+                if portfolio.status != "ACTIVE":
+                    raise PortfolioScopeError("portfolio is archived")
+                if account.status != "OPEN":
+                    raise PortfolioScopeError("brokerage account is closed")
+                if instrument.status != "ACTIVE":
+                    raise PortfolioScopeError("instrument is inactive")
+                currency = session.scalars(
+                    select(CurrencyDefinitionModel).where(
+                        CurrencyDefinitionModel.code == execution.quote_currency_code,
+                        CurrencyDefinitionModel.registry_list == "one",
+                        CurrencyDefinitionModel.withdrawal_key == "",
+                        CurrencyDefinitionModel.fund.is_(False),
+                        CurrencyDefinitionModel.minor_unit_exponent.is_not(None),
+                    )
+                ).first()
+                if currency is None:
+                    raise PortfolioScopeError(
+                        "quote currency is not an eligible current cash currency"
+                    )
 
             lock_values = {
                 "owner_id": owner_id,
@@ -240,13 +264,6 @@ def apply_portfolio_execution(
             )
             if position_lock is None:
                 raise PortfolioPersistenceError("failed to acquire position serialization lock")
-
-            existing = session.get(TradeExecutionModel, execution.execution_id)
-            if existing is not None:
-                if existing.owner_id != owner_id or existing.request_hash != request_hash:
-                    raise ExecutionIdConflict(
-                        "execution ID was reused by another owner or with a different payload"
-                    )
 
             book, applications, history = _rebuild_book(
                 session,
@@ -317,7 +334,7 @@ def apply_portfolio_execution(
                     session.add_all(
                         [
                             LotDisposalAllocationModel(
-                                id=__import__("uuid").uuid4(),
+                                id=uuid4(),
                                 owner_id=owner_id,
                                 portfolio_id=execution.portfolio_id,
                                 account_id=execution.account_id,
