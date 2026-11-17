@@ -18,12 +18,12 @@ Last updated: 2026-11-17
 - The new domain primitive is not wired into existing endpoints.
 - No frontend monetary arithmetic has been migrated.
 - No accounts, double-entry ledger, reconciliation, liabilities, FX conversion, investment holdings, market data, or AI features have been implemented.
-- CI has not yet validated this branch.
+- GitHub Actions run [#125](https://github.com/matteojose3112-bit/aurelius/actions/runs/44184005586) passed the backend and frontend jobs on this branch.
 
 ## Acceptance checks
 
-- [ ] Backend unit tests pass in GitHub Actions.
-- [ ] Existing backend and frontend test suites remain green.
+- [x] Backend unit tests pass in GitHub Actions (run #125).
+- [x] Existing backend and frontend test suites remain green in CI (run #125; frontend tests and production build).
 - [ ] Static review confirms domain module has no infrastructure imports.
 - [ ] Follow-up API/database migration design is reviewed before implementation.
 - [ ] No production migration or deployment occurs without explicit approval.
