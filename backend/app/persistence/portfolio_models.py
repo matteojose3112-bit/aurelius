@@ -246,6 +246,14 @@ class PortfolioPositionLockModel(Base):
             "portfolio_id", "account_id", "instrument_id", "quote_currency_definition_id",
             name="uq_portfolio_position_locks_key",
         ),
+        ForeignKeyConstraint(
+            ["instrument_id"], ["instrument_definitions.id"],
+            ondelete="RESTRICT", name="fk_portfolio_position_locks_instrument",
+        ),
+        ForeignKeyConstraint(
+            ["quote_currency_definition_id"], ["currency_definitions.id"],
+            ondelete="RESTRICT", name="fk_portfolio_position_locks_quote_currency",
+        ),
     )
 
     owner_id: Mapped[int] = mapped_column(
