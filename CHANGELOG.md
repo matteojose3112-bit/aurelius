@@ -351,3 +351,5 @@ All notable project changes are documented here.
 - Service is implemented but not yet connected to API routes. PostgreSQL concurrency/rollback tests are being added before API integration.
 
 - PostgreSQL 16 CI passed with 25 integration tests, including service-level replay/conflict, competing reversals, account close/post serialization, and failure-injection rollback. Full backend/frontend CI passed on the validated branch head.
+
+- Added bounded three-attempt retry for transient PostgreSQL serialization/deadlock/connection failures. Retries reuse the same idempotency key, so unknown commit outcomes safely replay or execute once.
