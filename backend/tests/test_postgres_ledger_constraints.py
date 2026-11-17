@@ -325,3 +325,37 @@ def test_postgres_serializes_concurrent_duplicate_idempotency_keys(pg_engine, pg
             IdempotencyRecordModel.idempotency_key == key_values["idempotency_key"],
         )
     ) == 1
+
+
+def test_postgres_rejects_fractional_minor_units_before_commit(pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    journal, postings = make_journal(
+        owner, usd, debit_account, credit_account, "100.5", "100.5"
+    )
+    pg_session.add_all([journal, *postings])
+    with pytest.raises(IntegrityError, match="ck_journal_postings_integral_minor_units"):
+        pg_session.commit()
+    pg_session.rollback()
+
+
+def test_postgres_accepts_38_digit_integer_minor_units(pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    maximum = "99999999999999999999999999999999999999"
+    journal, postings = make_journal(
+        owner, usd, debit_account, credit_account, maximum, maximum
+    )
+    pg_session.add_all([journal, *postings])
+    pg_session.commit()
+    assert pg_session.get(JournalEntryModel, journal.id) is not None
+
+
+def test_postgres_rejects_minor_units_at_10_to_the_38(pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    out_of_range = "100000000000000000000000000000000000000"
+    journal, postings = make_journal(
+        owner, usd, debit_account, credit_account, out_of_range, out_of_range
+    )
+    pg_session.add_all([journal, *postings])
+    with pytest.raises(IntegrityError, match="ck_journal_postings_integral_minor_units"):
+        pg_session.commit()
+    pg_session.rollback()
