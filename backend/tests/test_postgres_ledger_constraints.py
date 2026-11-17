@@ -874,3 +874,24 @@ def test_versioned_ledger_api_account_post_balance_reversal_and_owner_isolation(
             f"/v1/accounts/{cash.json()['id']}/balance?as_of=2026-11-17"
         )
         assert forbidden_balance.status_code == 404
+
+
+
+def test_versioned_account_api_fails_closed_when_registry_is_not_seeded(pg_session):
+    with TestClient(app) as client:
+        unauthenticated = client.get("/v1/accounts")
+        assert unauthenticated.status_code == 401
+
+        registration = client.post(
+            "/api/auth/register",
+            json={"email": f"{uuid4()}@no-registry.example", "password": "securepass123"},
+        )
+        assert registration.status_code == 201
+        client.headers["Authorization"] = f"Bearer {registration.json()['access_token']}"
+
+        response = client.post(
+            "/v1/accounts",
+            json={"name": "Cash", "account_type": "ASSET", "currency": "USD"},
+        )
+        assert response.status_code == 503
+        assert "registry has not been seeded" in response.json()["detail"]
