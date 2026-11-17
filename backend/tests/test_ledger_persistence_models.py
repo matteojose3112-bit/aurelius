@@ -76,8 +76,9 @@ def test_registry_seed_refuses_to_mutate_an_existing_release_record():
 def test_persistence_models_use_existing_integer_auth_and_exact_minor_units():
     assert isinstance(FinancialAccountModel.__table__.c.owner_id.type, type(User.__table__.c.id.type))
     amount_type = JournalPostingModel.__table__.c.amount_minor.type
-    assert amount_type.precision == 38
-    assert amount_type.scale == 0
+    # NUMERIC without a declared scale avoids PostgreSQL pre-check rounding.
+    assert amount_type.precision is None
+    assert amount_type.scale is None
 
     account_fks = {
         fk.name for fk in JournalPostingModel.__table__.foreign_key_constraints
