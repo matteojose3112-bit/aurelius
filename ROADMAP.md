@@ -313,3 +313,16 @@ PR #12 is an integration test vehicle, not a merge authorization or a replacemen
 - [x] Remove temporary lockfile-bootstrap permissions and branch-write logic; CI is read-only again.
 - [x] Verify clean install, Vitest 4.1.12, zero-vulnerability npm audit, frontend tests/build, backend tests, and populated PostgreSQL migration; all passed in CI run #114.
 \n\n## Foundation 0.2 — Accounts & Ledger (domain implementation)\n\n- [x] Add immutable FinancialAccount identities with owner, account type, currency, and open/closed status.\n- [x] Define normal balance rules for assets, expenses, liabilities, equity, and income.\n- [x] Add immutable positive debit/credit postings and balanced single-currency JournalEntry values.\n- [x] Add append-only LedgerBook posting, derived balances, asset-to-asset transfers, and exact one-time reversals.\n- [x] Add accounting golden-case and rejection tests; Foundation 0.2 CI run [#136](https://github.com/matteojose3112-bit/aurelius/actions/runs/44185872151) passed backend and frontend jobs.\n- [ ] Review idempotency, concurrency, account closure, backdating, reconciliation, and persistence constraints before API/database integration.\n- [ ] Keep production migrations, deployments, and external financial actions behind explicit approval.\n
+
+## Foundation 0.2.1 — Ledger Hardening (design baseline)
+
+- [x] Define owner + operation + idempotency-key semantics, canonical request hashing, safe retries, and conflict behavior.
+- [x] Specify atomic posting, deterministic account lock order, unique reversal enforcement, and append-only database protections.
+- [x] Define account closure/settlement and audited reopening boundaries.
+- [x] Define effective_date vs recorded_at, open-period backdating, and future-dated transaction policy.
+- [x] Specify reconciliation matching, duplicate imports, unmatched items, and correction scenarios.
+- [x] Review PR #10 / #12 compatibility: legacy Numeric(14,2) remains separate from canonical 0/2/3-exponent multi-currency ledger money.
+- [ ] Select canonical database money representation and finalize PostgreSQL schema/API contracts.
+- [ ] Implement disposable PostgreSQL atomicity, idempotency, reversal-race, rollback, and owner-isolation tests.
+
+Design contract: [LEDGER_HARDENING_0.2.1.md](docs/finance/LEDGER_HARDENING_0.2.1.md). No persistence, API, migration, production write, or deployment is included in this phase.
