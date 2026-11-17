@@ -80,3 +80,9 @@ Fake adapters validate capability matching, explicit global/regional coverage, e
 ## Implementation status
 
 Implemented in backend/app/domain/providers.py and backend/app/persistence/market_data_ingestion.py. Alembic revision 0004 adds the provider-observation deduplication index. Fake-provider PostgreSQL integration tests verify exact Decimal ingestion, license/purpose/region checks, provider source/terms identity, and duplicate replay. Latest CI: 34 PostgreSQL integration tests and 134 backend tests passed. No live provider has been connected.
+
+## First adapter prototype: ECB reference FX
+
+Implemented backend/app/providers/ecb_reference_fx.py. It supports explicitly mapped daily EUR-base reference-rate series from the ECB Data Portal, not executable bid/ask quotes. The adapter uses exact Decimal values, date-level UTC timestamps, stable source record IDs, and provider attribution metadata. Its HTTP behavior is tested with a mock transport and its persistence path is covered by PostgreSQL integration tests. No live external request was made.
+
+The ESCB policy permits free reuse of publicly released statistics with source attribution and requires that the statistics/metadata not be modified; third-party data is excluded without permission. This adapter is deliberately limited to public ECB reference series and retains the attribution and methodology note. See https://www.ecb.europa.eu/stats/ecb_statistics/governance_and_quality_framework/html/usage_policy.en.html.
