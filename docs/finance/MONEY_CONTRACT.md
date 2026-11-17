@@ -62,7 +62,7 @@ Before any endpoint migration:
 
 ## 7. Initial implementation
 
-`backend/app/domain/money.py` provides an immutable `Money` value object, an explicit initial currency registry, currency-scale normalization, fixed-scale serialization, integer minor units, and same-currency addition/subtraction. Its tests cover rounding, scale, float rejection, invalid values, unknown currencies, and cross-currency arithmetic.
+`backend/app/domain/money.py` provides an immutable `Money` value object, an explicit initial currency registry, currency-scale normalization, fixed-scale serialization, exact integer-minor-unit construction and conversion, canonical zero serialization, and same-currency addition/subtraction. Its tests cover rounding, scale, float rejection, invalid values, unknown currencies, and cross-currency arithmetic.
 
 ## 8. Non-goals
 
