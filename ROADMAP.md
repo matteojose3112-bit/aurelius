@@ -26,7 +26,7 @@ Last updated: 2026-11-17
 ### Aurelius Foundation 0.1 — active work
 - [x] Add an infrastructure-independent `Money` value object using Python `Decimal`.
 - [x] Add explicit initial currency exponents for BHD, CAD, COP, EUR, GBP, JPY, KWD, and USD; reject unsupported codes rather than assuming two decimals.
-- [x] Add fixed-scale decimal-string serialization, minor-unit conversion, same-currency arithmetic, and cross-currency rejection.
+- [x] Add fixed-scale decimal-string serialization, exact construction from integer minor units, minor-unit conversion, canonical zero, same-currency arithmetic, and cross-currency rejection.
 - [x] Add deterministic unit tests for scale, rounding, float rejection, invalid values, and FX boundary behavior.
 - [x] Record ADR-0001 for modular-monolith boundaries and read-only AI decision support.
 - [x] Obtain passing CI on the feature branch and preserve all legacy MVP tests (run #125: backend compile, Alembic upgrade, pytest; frontend tests and production build).
