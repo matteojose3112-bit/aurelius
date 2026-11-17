@@ -354,3 +354,6 @@ A disposable PostgreSQL 16 GitHub Actions service now runs the real Alembic migr
 ## Foundation 0.3 — atomic posting service
 
 The next implementation slice adds an application-level PostgreSQL posting service. It claims idempotency keys and writes journal headers, posting lines, audit events, and the final replayable response in one transaction. It locks affected accounts in deterministic UUID order, validates ownership/currency/status and configured accounting periods, and supports exact reversals serialized on the source journal. Same-key/same-payload requests replay the stored response; changed payloads conflict. This service is not connected to FastAPI routes yet. See backend/app/persistence/posting_service.py.
+
+The latest full CI run passed with **25 PostgreSQL 16 integration tests**, the SQLite backend suite (including posting-command validation), and frontend tests/build. PostgreSQL coverage includes concurrent same-key replay, competing reversals, account-close/post serialization, failure injection after posting rows are flushed, and atomic rollback. The service remains unexposed to API routes pending review of its transaction contract.
+
