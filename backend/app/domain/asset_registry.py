@@ -69,8 +69,10 @@ class UnitRegistry:
             base = by_code[definition.base_unit_code]
             if base.dimension != definition.dimension:
                 raise ValueError(f"base unit dimension mismatch for {definition.code}")
-            if definition.code == definition.base_unit_code and (
-                definition.conversion_to_base != Fraction(1, 1)
+            if (
+                definition.code == definition.base_unit_code
+                and not definition.context_required
+                and definition.conversion_to_base != Fraction(1, 1)
             ):
                 raise ValueError("base unit must have an exact 1:1 conversion")
         self._definitions: Mapping[str, UnitDefinition] = MappingProxyType(by_code)
