@@ -157,21 +157,6 @@ def apply_portfolio_execution_in_session(
     Session and never commits, rolls back, or retries. Use it when the trade,
     cash journal, fees, FX legs, and audit facts must share one atomic boundary.
     """
-def apply_portfolio_execution(
-    session_factory: Callable[[], Session],
-    owner_id: int,
-    actor_id: int,
-    execution: TradeExecution,
-    *,
-    cost_basis_method: CostBasisMethod = CostBasisMethod.FIFO,
-    specific_lot_id: UUID | None = None,
-) -> PersistedTradeResult:
-    """Atomically record a fill and its immutable lot/allocation facts.
-
-    The service serializes requests by execution UUID and then by position.
-    Ordinary posting rejects late-arriving fills; a separate deterministic
-    rebuild/correction workflow must handle out-of-order broker imports.
-    """
     if actor_id != owner_id:
         raise PortfolioScopeError("actor must match the authenticated owner in v1")
     if not isinstance(cost_basis_method, CostBasisMethod):
@@ -182,8 +167,6 @@ def apply_portfolio_execution(
         raise PortfolioAccountingError("specific_lot_id is only valid with SPECIFIC method")
 
     request_hash = _request_hash(execution, cost_basis_method, specific_lot_id)
-
-
     if not session.in_transaction():
         raise RuntimeError("apply_portfolio_execution_in_session requires an active transaction")
     if session.bind is None or session.bind.dialect.name != "postgresql":
