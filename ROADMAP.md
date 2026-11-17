@@ -6,7 +6,7 @@ Last updated: 2026-11-17
 
 **Aurelius** is the planned AI financial intelligence and investment operating system evolving from the FinTrack personal-finance MVP.
 
-**Current status: Foundation 0.1 in progress.** The Aurelius transformation plan is merged into `main`; a separate feature branch now contains the first exact-money domain primitive, unit tests, money contract, and architecture decision record. Feature-branch CI run #125 passed backend and frontend jobs. No AI agents, market-data integrations, forecasting, paper trading, or brokerage connections are implemented. The existing application remains the FinTrack MVP.
+**Current status: Foundation 0.2 in progress.** Foundation 0.1 established the exact-money primitive. A follow-on branch now defines immutable accounts, double-entry journals, same-currency asset transfers, append-only reversals, and accounting golden cases. CI for the Foundation 0.2 head is pending; run #125 validates only the earlier Foundation 0.1 baseline. No AI agents, market-data integrations, forecasting, paper trading, or brokerage connections are implemented. The existing application remains the FinTrack MVP.
 
 **Guiding principle:** evidence, exact calculations, transparency, and downside protection over confident-sounding answers.
 
@@ -30,12 +30,12 @@ Last updated: 2026-11-17
 - [x] Add deterministic unit tests for scale, rounding, float rejection, invalid values, and FX boundary behavior.
 - [x] Record ADR-0001 for modular-monolith boundaries and read-only AI decision support.
 - [x] Obtain passing CI on the feature branch and preserve all legacy MVP tests (run #125: backend compile, Alembic upgrade, pytest; frontend tests and production build).
-- [ ] Design account/ledger invariants and event correction/reversal rules before persistence changes.
+- [x] Define account ownership, immutable identity, account types, currency invariants, and normal balance rules in the Foundation 0.2 domain contract.\n- [x] Define balanced single-currency journal entries, positive postings, append-only corrections, one-time reversals, and same-currency asset transfers.\n- [x] Add accounting golden cases for opening balances, income, expenses, transfers, reversals, ownership, currency, and closed-account validation.\n- [ ] Obtain passing CI on the Foundation 0.2 branch and complete static review before considering API/persistence design.
 
 ### Financial correctness and data model
 - [x] Establish the initial documented money contract: currency code, explicit currency scale/minor units, Decimal calculations, ROUND_HALF_UP normalization, and decimal-string serialization policy. See `docs/finance/MONEY_CONTRACT.md`.
 - [ ] Migrate the existing API away from binary-float monetary fields to decimal-string representations; the new domain primitive is not yet wired into legacy endpoints.
-- [ ] Model financial accounts, opening balances, transfers, liabilities, and account ownership before claiming complete net-worth/accounting support.
+- [x] Define domain-level financial account identity, owner scope, currency, account types, and derived normal-side balances (Foundation 0.2; not persisted).\n- [x] Define opening-balance journals, balanced transfers, and reversal-based corrections (Foundation 0.2; not connected to API/database).\n- [ ] Model and persist financial accounts, liabilities, and account ownership before claiming complete net-worth/accounting support.
 - [ ] Add multi-currency support with explicit native/functional/reporting currencies and timestamped FX rates.
 - [ ] Design an auditable transaction/ledger model, reconciliation status, immutable import history, and correction/reversal workflow.
 - [ ] Add golden-case tests for rounding, aggregation, negative balances, refunds, transfers, FX conversion, leap/month boundaries, and currency precision.
@@ -312,3 +312,4 @@ PR #12 is an integration test vehicle, not a merge authorization or a replacemen
 - [x] Replace `npm install` with `npm ci` in frontend CI.
 - [x] Remove temporary lockfile-bootstrap permissions and branch-write logic; CI is read-only again.
 - [x] Verify clean install, Vitest 4.1.12, zero-vulnerability npm audit, frontend tests/build, backend tests, and populated PostgreSQL migration; all passed in CI run #114.
+\n\n## Foundation 0.2 — Accounts & Ledger (domain implementation)\n\n- [x] Add immutable FinancialAccount identities with owner, account type, currency, and open/closed status.\n- [x] Define normal balance rules for assets, expenses, liabilities, equity, and income.\n- [x] Add immutable positive debit/credit postings and balanced single-currency JournalEntry values.\n- [x] Add append-only LedgerBook posting, derived balances, asset-to-asset transfers, and exact one-time reversals.\n- [x] Add accounting golden-case and rejection tests; latest branch CI remains pending.\n- [ ] Review idempotency, concurrency, account closure, backdating, reconciliation, and persistence constraints before API/database integration.\n- [ ] Keep production migrations, deployments, and external financial actions behind explicit approval.\n
