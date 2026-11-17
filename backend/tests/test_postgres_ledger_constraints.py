@@ -64,6 +64,7 @@ from app.persistence.posting_service import (
     PostingLine,
     ReverseJournalCommand,
     post_journal,
+    post_journal_in_session,
     reverse_journal,
 )
 
@@ -549,6 +550,54 @@ def make_post_command(owner, usd, debit_account, credit_account, description="se
             PostingLine(credit_account.id, "CREDIT", amount),
         ),
     )
+
+
+
+def test_session_bound_posting_rolls_back_with_callers_transaction(pg_engine, pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    command = make_post_command(
+        owner, usd, debit_account, credit_account,
+        description="shared transaction rollback",
+        amount=2750,
+    )
+    idempotency_key = "trade-settlement-rollback-test"
+
+    with factory() as session:
+        with pytest.raises(RuntimeError, match="force outer transaction rollback"):
+            with session.begin():
+                result = post_journal_in_session(session, command, idempotency_key)
+                assert result.status_code == 201
+                assert not result.replayed
+                assert session.in_transaction()
+                raise RuntimeError("force outer transaction rollback")
+
+    with factory() as verification:
+        assert verification.scalar(
+            select(func.count()).select_from(JournalEntryModel).where(
+                JournalEntryModel.owner_id == owner.id,
+                JournalEntryModel.description == "shared transaction rollback",
+            )
+        ) == 0
+        assert verification.scalar(
+            select(func.count()).select_from(JournalPostingModel).where(
+                JournalPostingModel.owner_id == owner.id,
+            )
+        ) == 0
+        assert verification.scalar(
+            select(func.count()).select_from(AuditEventModel).where(
+                AuditEventModel.owner_id == owner.id,
+                AuditEventModel.event_type == "ledger.journal.posted",
+            )
+        ) == 0
+        assert verification.scalar(
+            select(func.count()).select_from(IdempotencyRecordModel).where(
+                IdempotencyRecordModel.owner_id == owner.id,
+                IdempotencyRecordModel.operation == "ledger.create_journal",
+                IdempotencyRecordModel.idempotency_key == idempotency_key,
+            )
+        ) == 0
 
 
 def test_posting_service_commits_journal_audit_and_idempotency(pg_engine, pg_session):
