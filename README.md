@@ -1,4 +1,61 @@
-# FinTrack
+# Aurelius — AI Financial Intelligence & Investment Operating System
+
+> **Formerly FinTrack.** Aurelius is being developed as an evidence-first financial partner for personal finance, accounting, market research, portfolio analysis, risk assessment, and financial education. The existing FinTrack application is the starting foundation—not a completed Aurelius product.
+
+**Transformation status:** assessment and architecture planning. No AI agents, market-data integrations, brokerage connections, or autonomous trading capabilities are implemented yet. Existing FinTrack features and Render resources remain unchanged pending review and explicit approval.
+
+**Operating principle:** deterministic financial calculations and traceable source data come first; AI interprets and challenges evidence, but never invents facts or silently executes financial actions.
+
+## Aurelius transformation — assessment baseline
+
+### What is reusable
+- React/Vite/Tailwind dashboard and existing transaction, budget, goal, and chart workflows.
+- FastAPI, SQLAlchemy, PostgreSQL/SQLite development setup, Alembic migrations, and authenticated account boundaries.
+- Argon2 password hashing, JWT authentication, CSV export, and existing automated test patterns.
+- Render API/static-site/database Blueprint as a deployment starting point, subject to lifecycle and security review.
+
+### Current limitations to resolve
+- The default main branch remains the older FinTrack MVP. Fixed-precision money, the genuine frontend lockfile, npm ci, and populated migration tests are on open draft integration work, not on main.
+- The UI is JavaScript (not TypeScript) and concentrated in a large App.jsx; component boundaries and domain-level state need to improve before the product expands.
+- The current data model has users, transactions, budgets, and goals—not financial accounts, currencies, liabilities, holdings, lots, dividends, trades, benchmarks, or reconciled ledger entries.
+- The draft money work uses Numeric(14,2) but currently converts API amounts back to JSON floats. That is not a sufficient multi-currency precision contract. Aurelius must define currency-specific minor-unit precision and an exact API representation before portfolio features.
+- No market-data ingestion, source provenance, freshness tracking, AI orchestration, forecasting, paper-trading engine, scheduled research, or prediction ledger exists.
+- Existing tests are a useful MVP base, but do not constitute browser E2E, provider contract, accounting golden-case, model-evaluation, or production security coverage.
+
+### Proposed architecture
+A modular monolith first: one FastAPI deployment with clear domain modules and provider adapters, backed by PostgreSQL. Keep deterministic calculations independent from AI. Add background scheduling only when ingestion and monitoring require it.
+
+1. **Domain layer:** money/currency, ledger, accounts, portfolio, market data, risk, research, thesis, prediction, and audit models.
+2. **Application layer:** explicit use cases for recording transactions, reconciling accounts, valuing holdings, generating research, and reviewing decisions.
+3. **Data-provider adapters:** normalized interfaces for prices, fundamentals, macroeconomic series, filings, and news; store source, retrieval time, period, currency, and raw/normalized provenance.
+4. **Intelligence layer:** central orchestrator plus specialist roles. Agents receive bounded, read-only tools and structured evidence; they do not directly mutate financial records or access brokerage execution.
+5. **Review layer:** independent reviewer challenges assumptions and evidence; outputs distinguish verified facts, estimates, assumptions, and model interpretations.
+6. **Presentation/API layer:** typed API contracts and focused React components for each department.
+7. **Operations layer:** append-only audit events, scheduled jobs, health checks, retries, observability, backup/restore, and access controls.
+
+Do not introduce a distributed microservice fleet or a heavyweight agent framework at this stage. Start with a Python orchestration service and typed specialist interfaces; choose a framework only after a small benchmark demonstrates a concrete benefit. PostgreSQL full-text search is sufficient initially; add vector search only when a measured retrieval use case warrants it.
+
+### Preliminary data-provider direction
+- **SEC EDGAR:** preferred source for U.S. issuer filings and XBRL facts. Public JSON APIs need no API key; requests must identify the client, respect fair-access limits, and run server-side because data.sec.gov does not support browser CORS. See https://www.sec.gov/search-filings/edgar-application-programming-interfaces and https://www.sec.gov/about/developer-resources.
+- **FRED:** preferred for U.S. macroeconomic time series. Requires an API key; some underlying series carry third-party rights. Follow the terms and display the required non-endorsement notice: https://fred.stlouisfed.org/docs/api/terms_of_use.html.
+- **Financial Modeling Prep (FMP):** promising broad fundamentals/news candidate. Its current published individual tiers include a free Basic tier (250 calls/day), Starter shown at $19/month billed annually, Premium $49/month billed annually, and Ultimate $99/month billed annually. Coverage differs by tier; displaying or redistributing data requires a separate licensing agreement. Pricing and terms must be rechecked before selection: https://site.financialmodelingprep.com/pricing-plans.
+- **Alpha Vantage:** useful prototype alternative; free access is 25 requests/day, and real-time/15-minute delayed U.S. data is premium-only. Not sufficient alone for broad autonomous monitoring on the free tier: https://www.alphavantage.co/support/api-key/ and https://www.alphavantage.co/premium/.
+- **Massive (formerly Polygon):** strong U.S. market-data candidate. Its current individual Stocks tiers list Basic free (5 calls/minute, 2 years EOD), Starter $29/month (15-minute delayed), Developer $79/month, and Advanced $199/month (real-time). Individual-use plans are explicitly distinguished from business plans; verify commercial/display rights before any product use: https://massive.com/pricing.
+
+**Initial recommendation:** build provider-neutral adapters; prototype with SEC + FRED + one free EOD market-data tier using synthetic/demo fixtures first. Do not purchase a subscription or commit to a provider until coverage, exchange licensing, display/redistribution rights, latency, reliability, and total cost are tested against Aurelius's actual use cases.
+
+### Reliability contract
+Every market datum and research claim should carry source/provider, instrument or series identifier, currency/unit, observation period, retrieval timestamp, market timestamp, delay/freshness status, and any transformation applied. Missing or stale data must be visible. AI-generated conclusions must link to the evidence they use. Forecasts must be timestamped and immutable once issued, with outcomes recorded separately.
+
+### Safety boundary
+Aurelius is initially read-only with respect to external financial institutions. No brokerage execution, automated orders, money movement, or autonomous portfolio rebalancing. AI output is decision support and education—not a guarantee, regulated advisory service, or substitute for professional tax/legal advice.
+
+---
+
+## Original FinTrack application reference
+
+The sections below document the existing FinTrack MVP and its current setup while the transformation is developed.
+
 
 **A modern personal finance and budgeting platform.**
 
@@ -185,3 +242,66 @@ Released under the [MIT License](LICENSE).
 ## Documentation review — 2026-11-03
 
 Documentation review — 2026-11-03: FinTrack is deployed on Render with API health and database schema availability previously verified. Live browser acceptance for registration/login and finance workflows remains outstanding. The PostgreSQL free-tier database is scheduled to expire 2026-12-02; do not rely on it for durable financial records. Upgrade, backups, security review, dependency findings, and bundle-size warning remain release concerns.
+
+
+## Engineering work in review — 2026-11-09
+
+The following focused hardening changes are available as **open draft pull requests**. They are not part of the deployed `main` branch until reviewed and merged:
+
+| PR | Change | Current status |
+| --- | --- | --- |
+| [#3](https://github.com/matteojose3112-bit/fintrack/pull/3) | Account-isolation regression tests | Draft; CI passed |
+| [#4](https://github.com/matteojose3112-bit/fintrack/pull/4) | Production API URL and CORS configuration | Draft; CI passed; no Render Blueprint sync performed |
+| [#5](https://github.com/matteojose3112-bit/fintrack/pull/5) | CSV spreadsheet-formula injection protection | Draft; CI passed |
+| [#7](https://github.com/matteojose3112-bit/fintrack/pull/7) | Login and registration rate limiting | Draft; CI passed; shared rate-limit storage and proxy behavior need deployment planning |
+| [#10](https://github.com/matteojose3112-bit/fintrack/pull/10) | Fixed-precision monetary storage and Decimal calculations | Draft; populated SQLite migration test passed; PostgreSQL migration test passed in #12 CI |
+| [#12](https://github.com/matteojose3112-bit/fintrack/pull/12) | Combined release-hardening integration validation | Draft; CI run #99 passed backend, frontend, PostgreSQL migration, and dependency-audit reporting |
+
+Individual PRs and the combined integration branch have passed their current CI checks. No PR in this list has been merged or deployed. The populated SQLite and disposable PostgreSQL migration tests passed; a verified production backup and restore path are still mandatory before any production migration. Do not treat the live deployment as containing these changes.
+
+## Documentation review — 2026-11-09
+
+Release readiness remains in progress. The immediate engineering focus is integration testing across the draft PRs, followed by live browser acceptance testing, dependency/security review, and a durable database/backup plan before the Render free PostgreSQL expiry on 2026-12-02. No production migration, Render configuration change, or deployment was performed as part of this documentation update.
+
+
+
+## Release validation update — 2026-11-10
+
+- PR #10 now includes a populated legacy SQLite migration regression test. GitHub Actions run [#91](https://github.com/matteojose3112-bit/fintrack/actions/runs/42920839088) passed both backend and frontend jobs, including the seeded pre-migration database upgrade, data rounding/preservation, index and foreign-key checks.
+- PR #12 is an open draft integration vehicle combining PRs #3, #5, #7, and #10. Its initial combined CI run [#92](https://github.com/matteojose3112-bit/fintrack/actions/runs/42921329034) passed backend tests, Alembic fresh-schema migration, frontend tests, and production build. A small follow-up whitespace-handling correction was committed after that run; the latest head still needs a fresh CI confirmation.
+- PR #4's Render URL/CORS diff was reviewed: the configured frontend API URL matches the deployed API, and production CORS is restricted to the deployed frontend origin. No Blueprint sync or live configuration change was performed.
+- PostgreSQL migration behavior was reviewed statically: Alembic batch operations use native column alteration on PostgreSQL. No non-production PostgreSQL migration execution has yet been performed, so that validation remains open.
+- Rate limiting still defaults to process-local memory. Multi-instance production requires private shared Redis/Valkey storage and verified proxy/client-IP handling.
+- Frontend dependency audit findings and the bundle-size warning have not been re-audited in this pass.
+- All PRs remain drafts; no changes have been merged or deployed. The free PostgreSQL database expiry remains 2026-12-02, with durable hosting, backup, and restore testing still required.
+
+
+- The latest integration CI run [#96](https://github.com/matteojose3112-bit/fintrack/actions/runs/42921838065) passed all three jobs: backend suite, frontend tests/build, and a disposable PostgreSQL service migration test. The PostgreSQL test upgraded seeded legacy Float records to Numeric(14,2) and verified rounded values, retained indexes, foreign keys, and migration revision.
+
+
+### Current frontend audit and bundle review — 2026-11-10
+The integration CI audit reconfirmed **6 dependency vulnerabilities**: 3 moderate, 1 high, and 2 critical. The affected packages are Vitest and its transitive test-tool dependencies (Vitest, tinypool, Vite, esbuild, vite-node, and @vitest/mocker); they are in frontend devDependencies, not runtime dependencies. npm reports a fix path through Vitest 4.1.12, which is a major-version upgrade and needs compatibility testing before adoption. The production build also reports a 617.25 kB minified JavaScript chunk (172.34 kB gzip). Frontend tests emit Recharts zero-width/zero-height chart warnings; tests still pass. These remain engineering follow-ups, not reasons to claim a failed build.
+
+Integration CI run [#99](https://github.com/matteojose3112-bit/fintrack/actions/runs/42922254791) subsequently passed all three jobs again and included the current npm audit summary.
+
+
+## Frontend dependency and bundle improvements — 2026-11-10
+
+- Upgraded Vitest from 2.1.8 to 4.1.12. Latest integration CI [run #107](https://github.com/matteojose3112-bit/fintrack/actions/runs/42924734014) reports **zero npm audit vulnerabilities** (previously 6: 3 moderate, 1 high, 2 critical).
+- Extracted the Recharts dashboard panels into a lazy-loaded DashboardCharts component. The initial application JavaScript bundle dropped from 617.25 kB to **179.05 kB** (54.73 kB gzip); charts are loaded separately in a **438.31 kB** chunk (118.18 kB gzip) when the authenticated dashboard renders.
+- Backend tests, frontend tests, frontend production build, and populated PostgreSQL migration CI all passed in run #107.
+- Frontend tests still emit Recharts zero-width/zero-height warnings in jsdom; this is a test-layout warning and does not fail the suite. GitHub Actions also reports Node 20 deprecation warnings for checkout/setup-node v4, which remains a maintenance follow-up.
+
+
+### Reproducible frontend install status — 2026-11-12
+- The frontend still has no committed `package-lock.json`; CI therefore remains on `npm install`. We did **not** switch to `npm ci`, because that would fail without a valid lockfile.
+- Added a temporary artifact-upload step to integration PR #12 so the next successful frontend CI run can preserve the lockfile generated by `npm install`. No CI run or artifact was available for the latest workflow commit at review time.
+- Local lockfile generation was attempted with `npm install --package-lock-only --offline`, but the environment has no cached npm registry metadata; network access to GitHub/npm is unavailable here. No synthetic or incomplete lockfile was committed.
+- Required next action: retrieve the generated CI artifact (or generate the lockfile in a network-enabled Node environment), commit the genuine lockfile, switch CI to `npm ci`, and rerun all jobs.
+
+
+### Reproducible frontend install completed — 2026-11-12
+- Committed the generated npm lockfile at `frontend/package-lock.json` (lockfileVersion 3; 153,615 bytes) to the integration branch through the CI runner. It is a genuine npm-generated lockfile, not a hand-built approximation.
+- Replaced the temporary bootstrap/artifact workflow with standard `npm ci`; removed the workflow's temporary write permission and branch-push logic.
+- Clean-install verification passed in [integration CI run #114](https://github.com/matteojose3112-bit/fintrack/actions/runs/43336240992): `npm ci`, npm audit (zero vulnerabilities), all 6 frontend tests, frontend production build, backend tests, and populated PostgreSQL migration all passed.
+- The frontend build remains split: initial JS 179.05 kB (54.73 kB gzip); dashboard charts 438.31 kB (118.18 kB gzip). Recharts still logs chart-dimension warnings in jsdom, but tests pass.
