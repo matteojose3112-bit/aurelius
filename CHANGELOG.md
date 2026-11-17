@@ -367,3 +367,16 @@ All notable project changes are documented here.
 - PostgreSQL 16 migration, persistence, posting service, and initial API integration are validated in CI. No hosted database, registry seed, Render resource, production record, broker, or deployment was touched.
 
 - PostgreSQL 16 API integration now passes 27 tests, including authenticated owner isolation and fail-closed behavior before registry seeding.
+
+
+## Unreleased — Foundation 0.4 global asset ontology — 2026-11-17
+
+### Added
+- Added an extensible asset/instrument domain that distinguishes underlying assets from financial instruments and their identifiers.
+- Added exact rational unit definitions for mass, volume, energy, securities, derivatives, tokens, event contracts, and area.
+- Added context-required quantity units for commodity-specific measures such as bushels.
+- Added an illustrative commodity catalog spanning precious metals, industrial metals, crude oil, natural gas, agriculture, and electricity.
+- Added tests for exact unit conversion, dimension mismatch, contextual-unit safety, open asset classes, and time-bounded identifiers.
+
+### Status
+- Domain groundwork only. Instrument master persistence, venue/listing registry, contract specs, market observations, data providers, portfolio holdings, and trading are not yet implemented.
