@@ -12,10 +12,12 @@ from datetime import date, datetime
 from decimal import Decimal
 import hashlib
 import json
+from time import sleep
 from typing import Callable
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -320,7 +322,7 @@ def _journal_response(
     }
 
 
-def post_journal(
+def _post_journal_once(
     session_factory: Callable[[], Session],
     command: PostJournalCommand,
     idempotency_key: str,
@@ -422,7 +424,7 @@ def post_journal(
     return result
 
 
-def reverse_journal(
+def _reverse_journal_once(
     session_factory: Callable[[], Session],
     command: ReverseJournalCommand,
     idempotency_key: str,
@@ -543,3 +545,50 @@ def reverse_journal(
                 session.flush()
                 result = PostingResult(status_code=201, body=body, replayed=False)
     return result
+
+
+
+def _is_retryable_database_error(error: DBAPIError) -> bool:
+    """Retry only transaction-abort and connection-loss SQLSTATE classes."""
+    original = error.orig
+    sqlstate = getattr(original, "sqlstate", None) or getattr(original, "pgcode", None)
+    return (
+        bool(error.connection_invalidated)
+        or sqlstate in {"40001", "40P01", "57P01"}
+        or (isinstance(sqlstate, str) and sqlstate.startswith("08"))
+    )
+
+
+def _run_with_transient_retry(operation: Callable[[], PostingResult]) -> PostingResult:
+    """Bounded retry with the same idempotency key, including unknown commit outcomes."""
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            return operation()
+        except DBAPIError as exc:
+            if not _is_retryable_database_error(exc) or attempt == max_attempts - 1:
+                raise
+            # The next attempt opens a fresh Session. Reusing the same key makes
+            # a retry safe even if the previous connection failed during COMMIT.
+            sleep(0.05 * (2**attempt))
+    raise RuntimeError("unreachable retry loop exit")
+
+
+def post_journal(
+    session_factory: Callable[[], Session],
+    command: PostJournalCommand,
+    idempotency_key: str,
+) -> PostingResult:
+    return _run_with_transient_retry(
+        lambda: _post_journal_once(session_factory, command, idempotency_key)
+    )
+
+
+def reverse_journal(
+    session_factory: Callable[[], Session],
+    command: ReverseJournalCommand,
+    idempotency_key: str,
+) -> PostingResult:
+    return _run_with_transient_retry(
+        lambda: _reverse_journal_once(session_factory, command, idempotency_key)
+    )
