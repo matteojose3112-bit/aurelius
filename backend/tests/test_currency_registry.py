@@ -66,7 +66,7 @@ def test_snapshot_loader_rejects_duplicate_codes():
         ],
         "historical": [],
     }
-    with pytest.raises(ValueError, match="duplicate currency code"):
+    with pytest.raises(ValueError, match="duplicate currency definition"):
         CurrencyRegistry(snapshot)
 
 
