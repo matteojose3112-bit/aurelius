@@ -1,4 +1,61 @@
-# FinTrack
+# Aurelius — AI Financial Intelligence & Investment Operating System
+
+> **Formerly FinTrack.** Aurelius is being developed as an evidence-first financial partner for personal finance, accounting, market research, portfolio analysis, risk assessment, and financial education. The existing FinTrack application is the starting foundation—not a completed Aurelius product.
+
+**Transformation status:** assessment and architecture planning. No AI agents, market-data integrations, brokerage connections, or autonomous trading capabilities are implemented yet. Existing FinTrack features and Render resources remain unchanged pending review and explicit approval.
+
+**Operating principle:** deterministic financial calculations and traceable source data come first; AI interprets and challenges evidence, but never invents facts or silently executes financial actions.
+
+## Aurelius transformation — assessment baseline
+
+### What is reusable
+- React/Vite/Tailwind dashboard and existing transaction, budget, goal, and chart workflows.
+- FastAPI, SQLAlchemy, PostgreSQL/SQLite development setup, Alembic migrations, and authenticated account boundaries.
+- Argon2 password hashing, JWT authentication, CSV export, and existing automated test patterns.
+- Render API/static-site/database Blueprint as a deployment starting point, subject to lifecycle and security review.
+
+### Current limitations to resolve
+- The default main branch remains the older FinTrack MVP. Fixed-precision money, the genuine frontend lockfile, npm ci, and populated migration tests are on open draft integration work, not on main.
+- The UI is JavaScript (not TypeScript) and concentrated in a large App.jsx; component boundaries and domain-level state need to improve before the product expands.
+- The current data model has users, transactions, budgets, and goals—not financial accounts, currencies, liabilities, holdings, lots, dividends, trades, benchmarks, or reconciled ledger entries.
+- The draft money work uses Numeric(14,2) but currently converts API amounts back to JSON floats. That is not a sufficient multi-currency precision contract. Aurelius must define currency-specific minor-unit precision and an exact API representation before portfolio features.
+- No market-data ingestion, source provenance, freshness tracking, AI orchestration, forecasting, paper-trading engine, scheduled research, or prediction ledger exists.
+- Existing tests are a useful MVP base, but do not constitute browser E2E, provider contract, accounting golden-case, model-evaluation, or production security coverage.
+
+### Proposed architecture
+A modular monolith first: one FastAPI deployment with clear domain modules and provider adapters, backed by PostgreSQL. Keep deterministic calculations independent from AI. Add background scheduling only when ingestion and monitoring require it.
+
+1. **Domain layer:** money/currency, ledger, accounts, portfolio, market data, risk, research, thesis, prediction, and audit models.
+2. **Application layer:** explicit use cases for recording transactions, reconciling accounts, valuing holdings, generating research, and reviewing decisions.
+3. **Data-provider adapters:** normalized interfaces for prices, fundamentals, macroeconomic series, filings, and news; store source, retrieval time, period, currency, and raw/normalized provenance.
+4. **Intelligence layer:** central orchestrator plus specialist roles. Agents receive bounded, read-only tools and structured evidence; they do not directly mutate financial records or access brokerage execution.
+5. **Review layer:** independent reviewer challenges assumptions and evidence; outputs distinguish verified facts, estimates, assumptions, and model interpretations.
+6. **Presentation/API layer:** typed API contracts and focused React components for each department.
+7. **Operations layer:** append-only audit events, scheduled jobs, health checks, retries, observability, backup/restore, and access controls.
+
+Do not introduce a distributed microservice fleet or a heavyweight agent framework at this stage. Start with a Python orchestration service and typed specialist interfaces; choose a framework only after a small benchmark demonstrates a concrete benefit. PostgreSQL full-text search is sufficient initially; add vector search only when a measured retrieval use case warrants it.
+
+### Preliminary data-provider direction
+- **SEC EDGAR:** preferred source for U.S. issuer filings and XBRL facts. Public JSON APIs need no API key; requests must identify the client, respect fair-access limits, and run server-side because data.sec.gov does not support browser CORS. See https://www.sec.gov/search-filings/edgar-application-programming-interfaces and https://www.sec.gov/about/developer-resources.
+- **FRED:** preferred for U.S. macroeconomic time series. Requires an API key; some underlying series carry third-party rights. Follow the terms and display the required non-endorsement notice: https://fred.stlouisfed.org/docs/api/terms_of_use.html.
+- **Financial Modeling Prep (FMP):** promising broad fundamentals/news candidate. Its current published individual tiers include a free Basic tier (250 calls/day), Starter shown at $19/month billed annually, Premium $49/month billed annually, and Ultimate $99/month billed annually. Coverage differs by tier; displaying or redistributing data requires a separate licensing agreement. Pricing and terms must be rechecked before selection: https://site.financialmodelingprep.com/pricing-plans.
+- **Alpha Vantage:** useful prototype alternative; free access is 25 requests/day, and real-time/15-minute delayed U.S. data is premium-only. Not sufficient alone for broad autonomous monitoring on the free tier: https://www.alphavantage.co/support/api-key/ and https://www.alphavantage.co/premium/.
+- **Massive (formerly Polygon):** strong U.S. market-data candidate. Its current individual Stocks tiers list Basic free (5 calls/minute, 2 years EOD), Starter $29/month (15-minute delayed), Developer $79/month, and Advanced $199/month (real-time). Individual-use plans are explicitly distinguished from business plans; verify commercial/display rights before any product use: https://massive.com/pricing.
+
+**Initial recommendation:** build provider-neutral adapters; prototype with SEC + FRED + one free EOD market-data tier using synthetic/demo fixtures first. Do not purchase a subscription or commit to a provider until coverage, exchange licensing, display/redistribution rights, latency, reliability, and total cost are tested against Aurelius's actual use cases.
+
+### Reliability contract
+Every market datum and research claim should carry source/provider, instrument or series identifier, currency/unit, observation period, retrieval timestamp, market timestamp, delay/freshness status, and any transformation applied. Missing or stale data must be visible. AI-generated conclusions must link to the evidence they use. Forecasts must be timestamped and immutable once issued, with outcomes recorded separately.
+
+### Safety boundary
+Aurelius is initially read-only with respect to external financial institutions. No brokerage execution, automated orders, money movement, or autonomous portfolio rebalancing. AI output is decision support and education—not a guarantee, regulated advisory service, or substitute for professional tax/legal advice.
+
+---
+
+## Original FinTrack application reference
+
+The sections below document the existing FinTrack MVP and its current setup while the transformation is developed.
+
 
 **A modern personal finance and budgeting platform.**
 
