@@ -171,7 +171,7 @@ def upgrade():
         sa.Column("account_id", _uuid_type(), nullable=False),
         sa.Column("currency_definition_id", _uuid_type(), nullable=False),
         sa.Column("side", sa.String(8), nullable=False),
-        sa.Column("amount_minor", sa.Numeric(38, 0, asdecimal=True), nullable=False),
+        sa.Column("amount_minor", sa.Numeric(asdecimal=True), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -343,6 +343,17 @@ def upgrade():
 
 
 def _install_postgresql_guards():
+    op.execute(
+        """
+        ALTER TABLE journal_postings
+        ADD CONSTRAINT ck_journal_postings_integral_minor_units
+        CHECK (
+            amount_minor = trunc(amount_minor)
+            AND amount_minor > 0
+            AND amount_minor < 100000000000000000000000000000000000000::numeric
+        )
+        """
+    )
     op.execute("CREATE EXTENSION IF NOT EXISTS btree_gist")
     op.execute(
         """
@@ -547,6 +558,10 @@ def downgrade():
         op.execute("DROP TRIGGER IF EXISTS trg_journal_postings_validate_deferred ON journal_postings")
         op.execute("DROP TRIGGER IF EXISTS trg_journal_entries_validate_deferred ON journal_entries")
         op.execute("DROP FUNCTION IF EXISTS aurelius_validate_journal()")
+        op.execute(
+            "ALTER TABLE journal_postings "
+            "DROP CONSTRAINT IF EXISTS ck_journal_postings_integral_minor_units"
+        )
         op.execute("DROP TRIGGER IF EXISTS trg_idempotency_records_completion ON idempotency_records")
         op.execute("DROP FUNCTION IF EXISTS aurelius_guard_idempotency_record()")
         op.execute("DROP TRIGGER IF EXISTS trg_financial_accounts_identity_immutable ON financial_accounts")
