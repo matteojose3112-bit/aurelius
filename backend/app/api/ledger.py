@@ -4,6 +4,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy import case, func, select
@@ -22,6 +23,7 @@ from app.persistence.models import (
     AuditEventModel,
     CurrencyDefinitionModel,
     FinancialAccountModel,
+    FinancialOwnerPreferenceModel,
     JournalEntryModel,
     JournalPostingModel,
 )
@@ -67,9 +69,17 @@ def _cash_currency_definition(db: Session, code: str) -> CurrencyDefinitionModel
         .limit(1)
     ).first()
     if definition is None:
+        registry_count = db.scalar(
+            select(func.count()).select_from(CurrencyDefinitionModel)
+        )
+        if not registry_count:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="The ISO currency registry has not been seeded. Run the explicit registry seed command after database migration.",
+            )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"{code.upper()} is not an enabled current cash currency. Confirm the ISO registry has been seeded.",
+            detail=f"{code.upper()} is not an enabled current cash currency.",
         )
     return definition
 
@@ -116,7 +126,7 @@ def _raise_posting_http_error(error: Exception) -> None:
         (AccountClosed, AccountingPeriodUnavailable, JournalAlreadyReversed),
     ):
         raise HTTPException(status_code=409, detail=str(error))
-    if isinstance(error, (CurrencyMismatch, InvalidJournal, ValueError)):
+    if isinstance(error, (CurrencyMismatch, InvalidJournal, TypeError, ValueError)):
         raise HTTPException(status_code=422, detail=str(error))
     if isinstance(error, IntegrityError):
         raise HTTPException(
@@ -170,30 +180,35 @@ def create_financial_account(
         currency_definition_id=currency.id,
         status="OPEN",
     )
-    db.add(account)
-    db.flush()
-    db.add(
-        AuditEventModel(
-            id=uuid4(),
-            owner_id=user.id,
-            actor_id=user.id,
-            event_type="ledger.account.created",
-            aggregate_type="financial_account",
-            aggregate_id=account.id,
-            payload={
-                "account_type": account.account_type,
-                "currency": currency.code,
-                "currency_registry_release": currency.registry_release,
-            },
-        )
-    )
     try:
+        db.add(account)
+        db.flush()
+        db.add(
+            AuditEventModel(
+                id=uuid4(),
+                owner_id=user.id,
+                actor_id=user.id,
+                event_type="ledger.account.created",
+                aggregate_type="financial_account",
+                aggregate_id=account.id,
+                payload={
+                    "account_type": account.account_type,
+                    "currency": currency.code,
+                    "currency_registry_release": currency.registry_release,
+                },
+            )
+        )
         db.commit()
         db.refresh(account)
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=409, detail="The financial account could not be created."
+        )
+    except DBAPIError:
+        db.rollback()
+        raise HTTPException(
+            status_code=503, detail="The ledger database is temporarily unavailable."
         )
     return _serialize_account(account, currency)
 
@@ -238,7 +253,13 @@ def get_financial_account_balance(
     if account is None:
         raise HTTPException(status_code=404, detail="Financial account not found")
     account_model, currency = account
-    cutoff = as_of or datetime.now(timezone.utc).date()
+    preferences = db.get(FinancialOwnerPreferenceModel, user.id)
+    timezone_name = preferences.accounting_timezone if preferences else "UTC"
+    try:
+        owner_timezone = ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        owner_timezone = timezone.utc
+    cutoff = as_of or datetime.now(owner_timezone).date()
     debit_signed = case(
         (JournalPostingModel.side == "DEBIT", JournalPostingModel.amount_minor),
         else_=-JournalPostingModel.amount_minor,
