@@ -16,6 +16,22 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.main import app
 from app.models import User
 from app.persistence.currency_registry_seed import seed_currency_registry
+from app.persistence.instrument_models import (
+    AssetDefinitionModel,
+    BondContractSpecModel,
+    DerivativeContractSpecModel,
+    ForecastRecordModel,
+    ForecastResolutionModel,
+    InstrumentDefinitionModel,
+    InstrumentIdentifierModel,
+    InstrumentListingModel,
+    MarketObservationModel,
+    MarketVenueModel,
+    PredictionContractSpecModel,
+    ProviderSourceModel,
+    UnitDefinitionModel,
+)
+from app.persistence.instrument_registry_seed import seed_global_reference_data
 from app.persistence.models import (
     AccountingPeriodModel,
     AuditEventModel,
@@ -895,3 +911,281 @@ def test_versioned_account_api_fails_closed_when_registry_is_not_seeded(pg_sessi
         )
         assert response.status_code == 503
         assert "registry has not been seeded" in response.json()["detail"]
+
+
+
+def test_postgres_global_reference_seed_and_instrument_contracts_persist(pg_session):
+    seeded = seed_global_reference_data(pg_session)
+    seed_currency_registry(pg_session)
+    usd = pg_session.scalars(
+        select(CurrencyDefinitionModel).where(
+            CurrencyDefinitionModel.code == "USD",
+            CurrencyDefinitionModel.registry_list == "one",
+        )
+    ).one()
+    pg_session.flush()
+
+    future = InstrumentDefinitionModel(
+        id=uuid4(),
+        instrument_type="future",
+        name="Synthetic WTI futures test contract",
+        underlying_asset_id="commodity.wti_crude_oil",
+        quote_currency_definition_id=usd.id,
+        status="ACTIVE",
+        source_id="aurelius-test",
+    )
+    venue = MarketVenueModel(
+        id=uuid4(),
+        mic="Z999",
+        name="Synthetic Test Exchange",
+        country_code="US",
+        timezone="America/New_York",
+        venue_type="exchange",
+        status="ACTIVE",
+        source_id="aurelius-test",
+    )
+    provider = ProviderSourceModel(
+        id=uuid4(),
+        provider_key="test-market-data",
+        name="Test Market Data",
+        category="market_data",
+        terms_version="test-v1",
+        rights_scope="test-only",
+        geographic_coverage=["US"],
+        status="ACTIVE",
+    )
+    pg_session.add_all([future, venue, provider])
+    pg_session.flush()
+
+    listing = InstrumentListingModel(
+        id=uuid4(),
+        instrument_id=future.id,
+        venue_id=venue.id,
+        symbol="SYNTH-CLH27",
+        quote_currency_definition_id=usd.id,
+        active_from=date(2026, 1, 1),
+        active_to=date(2027, 1, 1),
+        trading_calendar_code="us_futures",
+        status="ACTIVE",
+        source_id="aurelius-test",
+    )
+    derivative = DerivativeContractSpecModel(
+        instrument_id=future.id,
+        underlying_asset_id="commodity.wti_crude_oil",
+        contract_unit_code="barrel",
+        contract_size=Decimal("1000"),
+        tick_size=Decimal("0.01"),
+        tick_value=Decimal("10"),
+        expiry_date=date(2027, 3, 20),
+        first_notice_date=date(2027, 2, 20),
+        last_trade_date=date(2027, 3, 18),
+        settlement_type="physical",
+        margin_currency_definition_id=usd.id,
+        delivery_grade="WTI",
+        delivery_location="Cushing, Oklahoma",
+    )
+    observation_time = datetime(2026, 11, 17, 14, 0, tzinfo=timezone.utc)
+    observation = MarketObservationModel(
+        id=uuid4(),
+        instrument_id=future.id,
+        observation_type="settlement_price",
+        value=Decimal("-2.5"),
+        unit_code="barrel",
+        quote_currency_definition_id=usd.id,
+        provider_source_id=provider.id,
+        source_record_id="synthetic-row-1",
+        observed_at=observation_time,
+        retrieved_at=observation_time + timedelta(minutes=1),
+        market_session="test-session",
+        methodology="synthetic-test-value",
+        license_reference="test-only",
+    )
+    forecast = ForecastRecordModel(
+        id=uuid4(),
+        target_id="synthetic.wti.price",
+        model_id="test-model",
+        model_version="0.1",
+        probability=Decimal("0.65"),
+        generated_at=observation_time,
+        horizon_end=observation_time + timedelta(days=30),
+        evidence_ids=["synthetic-source-1"],
+    )
+    resolution = ForecastResolutionModel(
+        forecast_id=forecast.id,
+        resolved_outcome="UP",
+        resolved_at=observation_time + timedelta(days=31),
+        scoring_method="brier",
+        score=Decimal("0.8"),
+        resolution_source_url="https://example.test/resolve",
+        evidence_ids=["synthetic-resolution-1"],
+    )
+    pg_session.add_all([listing, derivative, observation, forecast, resolution])
+    pg_session.commit()
+
+    assert seeded["unit_definitions_inserted"] == 18
+    assert seeded["asset_definitions_inserted"] == 27
+    assert pg_session.get(DerivativeContractSpecModel, future.id) is not None
+    assert pg_session.get(MarketObservationModel, observation.id).value == Decimal("-2.5")
+    assert pg_session.get(ForecastResolutionModel, forecast.id).resolved_outcome == "UP"
+
+
+def test_postgres_identifier_and_listing_validity_ranges_cannot_overlap(pg_session):
+    seed_global_reference_data(pg_session)
+    seed_currency_registry(pg_session)
+    usd = pg_session.scalars(
+        select(CurrencyDefinitionModel).where(
+            CurrencyDefinitionModel.code == "USD",
+            CurrencyDefinitionModel.registry_list == "one",
+        )
+    ).one()
+    instrument_a = InstrumentDefinitionModel(
+        id=uuid4(), instrument_type="equity_share", name="Synthetic A",
+        underlying_asset_id="issuer.example_public_company",
+        quote_currency_definition_id=usd.id, source_id="test",
+    )
+    instrument_b = InstrumentDefinitionModel(
+        id=uuid4(), instrument_type="equity_share", name="Synthetic B",
+        underlying_asset_id="issuer.example_public_company",
+        quote_currency_definition_id=usd.id, source_id="test",
+    )
+    venue = MarketVenueModel(
+        id=uuid4(), mic="Z998", name="Synthetic Venue",
+        country_code="US", timezone="America/New_York",
+        venue_type="exchange", source_id="test",
+    )
+    other_venue = MarketVenueModel(
+        id=uuid4(), mic="Z997", name="Synthetic Other Venue",
+        country_code="US", timezone="America/Chicago",
+        venue_type="exchange", source_id="test",
+    )
+    pg_session.add_all([instrument_a, instrument_b, venue, other_venue])
+    pg_session.commit()
+
+    pg_session.add_all([
+        InstrumentIdentifierModel(
+            id=uuid4(), instrument_id=instrument_a.id, namespace="figi",
+            value="SYNTHETIC-FIGI-1", source_id="test",
+            valid_from=date(2020, 1, 1), valid_to=date(2025, 12, 31),
+        ),
+        InstrumentIdentifierModel(
+            id=uuid4(), instrument_id=instrument_b.id, namespace="figi",
+            value="SYNTHETIC-FIGI-1", source_id="test",
+            valid_from=date(2025, 1, 1), valid_to=date(2027, 12, 31),
+        ),
+    ])
+    with pytest.raises(IntegrityError, match="ex_instrument_identifiers_no_overlapping_validity"):
+        pg_session.commit()
+    pg_session.rollback()
+
+    # Adjacent same-venue symbol history is allowed; a different venue may
+    # reuse the symbol during the same dates.
+    pg_session.add_all([
+        InstrumentListingModel(
+            id=uuid4(), instrument_id=instrument_a.id, venue_id=venue.id,
+            symbol="SYNTH", quote_currency_definition_id=usd.id,
+            active_from=date(2020, 1, 1), active_to=date(2024, 12, 31),
+            trading_calendar_code="test", status="ACTIVE", source_id="test",
+        ),
+        InstrumentListingModel(
+            id=uuid4(), instrument_id=instrument_b.id, venue_id=venue.id,
+            symbol="SYNTH", quote_currency_definition_id=usd.id,
+            active_from=date(2025, 1, 1), active_to=date(2027, 12, 31),
+            trading_calendar_code="test", status="ACTIVE", source_id="test",
+        ),
+        InstrumentListingModel(
+            id=uuid4(), instrument_id=instrument_b.id, venue_id=other_venue.id,
+            symbol="SYNTH", quote_currency_definition_id=usd.id,
+            active_from=date(2024, 1, 1), active_to=date(2026, 1, 1),
+            trading_calendar_code="test", status="ACTIVE", source_id="test",
+        ),
+    ])
+    pg_session.commit()
+
+    pg_session.add(
+        InstrumentListingModel(
+            id=uuid4(), instrument_id=instrument_b.id, venue_id=venue.id,
+            symbol="SYNTH", quote_currency_definition_id=usd.id,
+            active_from=date(2024, 1, 1), active_to=date(2026, 1, 1),
+            trading_calendar_code="test", status="ACTIVE", source_id="test",
+        )
+    )
+    with pytest.raises(IntegrityError, match="ex_instrument_listings_no_overlapping_symbol"):
+        pg_session.commit()
+    pg_session.rollback()
+
+
+def test_postgres_global_reference_rows_are_append_only(pg_session):
+    seed_global_reference_data(pg_session)
+    pg_session.commit()
+    gold = pg_session.scalars(
+        select(AssetDefinitionModel).where(
+            AssetDefinitionModel.asset_id == "commodity.gold"
+        )
+    ).one()
+    gold.name = "Tampered gold"
+    with pytest.raises(DBAPIError, match="append-only"):
+        pg_session.commit()
+    pg_session.rollback()
+
+
+def test_postgres_bond_and_prediction_minor_units_reject_fractional_values(pg_session):
+    seed_global_reference_data(pg_session)
+    seed_currency_registry(pg_session)
+    usd = pg_session.scalars(
+        select(CurrencyDefinitionModel).where(
+            CurrencyDefinitionModel.code == "USD",
+            CurrencyDefinitionModel.registry_list == "one",
+        )
+    ).one()
+    issuer_asset = pg_session.scalars(
+        select(AssetDefinitionModel).where(
+            AssetDefinitionModel.asset_id == "issuer.example_public_company"
+        )
+    ).one()
+    bond = InstrumentDefinitionModel(
+        id=uuid4(), instrument_type="bond", name="Synthetic test bond",
+        underlying_asset_id=issuer_asset.asset_id,
+        quote_currency_definition_id=usd.id, source_id="test",
+    )
+    prediction = InstrumentDefinitionModel(
+        id=uuid4(), instrument_type="prediction_contract", name="Synthetic event contract",
+        underlying_asset_id="prediction.election_event",
+        quote_currency_definition_id=usd.id, source_id="test",
+    )
+    pg_session.add_all([bond, prediction])
+    pg_session.commit()
+
+    pg_session.add(
+        BondContractSpecModel(
+            instrument_id=bond.id,
+            issuer_asset_id=issuer_asset.asset_id,
+            currency_definition_id=usd.id,
+            face_value_minor=Decimal("1000.5"),
+            issue_date=date(2026, 1, 1),
+            maturity_date=date(2030, 1, 1),
+            coupon_type="fixed",
+            coupon_rate=Decimal("0.04"),
+            coupon_frequency=2,
+            day_count_convention="30/360",
+            seniority="senior",
+        )
+    )
+    with pytest.raises(IntegrityError, match="ck_bond_face_value_integral_minor"):
+        pg_session.commit()
+    pg_session.rollback()
+
+    pg_session.add(
+        PredictionContractSpecModel(
+            instrument_id=prediction.id,
+            event_id="synthetic-event",
+            question="Will the synthetic event occur?",
+            outcomes=["YES", "NO"],
+            resolution_source_url="https://example.test/rules",
+            resolution_deadline=datetime(2027, 1, 1, tzinfo=timezone.utc),
+            settlement_currency_definition_id=usd.id,
+            payout_minor=Decimal("1.5"),
+        )
+    )
+    with pytest.raises(IntegrityError, match="ck_prediction_payout_integral_minor"):
+        pg_session.commit()
+    pg_session.rollback()
