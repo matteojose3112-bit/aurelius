@@ -395,5 +395,5 @@ Implementation branch: feat/aurelius-foundation-0.3-ledger-persistence-models. N
 - [x] Add a disposable PostgreSQL 16 service to GitHub Actions.
 - [x] Run the real Alembic migration against PostgreSQL 16 in CI.
 - [x] Add PostgreSQL integration tests for balanced/unbalanced journals, reversal symmetry, closed accounts, append-only protection, fractional precision, 38-digit bounds, rollback, and concurrent idempotency uniqueness.
-- [ ] Obtain a clean PostgreSQL 16 CI run and resolve any trigger/migration/test failures.
+- [x] Latest full CI run passed: PostgreSQL 16 migration + 16 integration tests, SQLite backend suite, frontend tests, and frontend build.
 - [ ] Expand concurrency coverage to posting-service replay/conflict semantics, competing reversals, account close/post races, and timeout-after-commit retry.
