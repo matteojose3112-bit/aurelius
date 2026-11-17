@@ -468,3 +468,15 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [x] Add explicit derivative/futures, bond, and prediction-contract specification types.
 
 - [x] Add provenance-aware market observation and separately calibrated forecast domain records; persistence, scoring, and provider adapters remain pending.
+
+
+## Foundation 0.4 — global instrument persistence
+
+- [x] Add persistence models for unit/asset/instrument definitions and identifiers.
+- [x] Add MIC venue and time-bounded listing tables.
+- [x] Add derivative, bond, and prediction contract specification tables.
+- [x] Add provider source/licensing metadata, immutable market observations, forecast records, and separate forecast resolutions.
+- [x] Add exact rational unit/asset seed service and dry-run-by-default CLI.
+- [ ] Validate Alembic 0003 on SQLite and PostgreSQL 16 CI; verify temporal exclusion and append-only guards.
+- [ ] Add provider adapter contracts and licensed market-data ingestion.
+- [ ] Add holdings, position lots, portfolio valuation, and market risk.
