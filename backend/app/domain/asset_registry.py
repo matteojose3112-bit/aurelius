@@ -270,3 +270,166 @@ ASSET_DEFINITIONS = (
     AssetDefinition("derivative.interest_rate_swap", "derivative", "interest_rate_swap", "Interest rate swap", "contract"),
 )
 DEFAULT_ASSET_REGISTRY = AssetRegistry(ASSET_DEFINITIONS, DEFAULT_UNIT_REGISTRY)
+
+
+@dataclass(frozen=True, slots=True)
+class MarketVenue:
+    mic: str
+    name: str
+    country_code: str
+    timezone: str
+    venue_type: str
+
+    def __post_init__(self) -> None:
+        if not re.fullmatch(r"[A-Z0-9]{4}", self.mic):
+            raise ValueError("venue MIC must be a four-character ISO 10383 identifier")
+        if not re.fullmatch(r"[A-Z]{2}", self.country_code):
+            raise ValueError("venue country code must be ISO 3166 alpha-2")
+        if not self.name.strip() or not _CODE_PATTERN.fullmatch(self.venue_type):
+            raise ValueError("venue name and type are required")
+        try:
+            from zoneinfo import ZoneInfo
+
+            ZoneInfo(self.timezone)
+        except Exception as exc:
+            raise ValueError("venue timezone must be a valid IANA timezone") from exc
+
+
+@dataclass(frozen=True, slots=True)
+class InstrumentListing:
+    instrument_id: UUID
+    venue_mic: str
+    symbol: str
+    quote_currency_code: str
+    active_from: date
+    active_to: date | None = None
+    trading_calendar_code: str = "default"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.instrument_id, UUID):
+            raise TypeError("listing instrument_id must be UUID")
+        if not re.fullmatch(r"[A-Z0-9]{4}", self.venue_mic):
+            raise ValueError("listing venue_mic must be a four-character MIC")
+        if not self.symbol.strip():
+            raise ValueError("listing symbol must be non-empty")
+        if not re.fullmatch(r"[A-Z]{3}", self.quote_currency_code):
+            raise ValueError("listing quote currency must be ISO alpha-3")
+        if self.active_to and self.active_to < self.active_from:
+            raise ValueError("listing active date range is inverted")
+        if not _CODE_PATTERN.fullmatch(self.trading_calendar_code):
+            raise ValueError("trading calendar code must be a lowercase identifier")
+
+
+@dataclass(frozen=True, slots=True)
+class DerivativeContractSpec:
+    instrument_id: UUID
+    underlying_asset_id: str
+    contract_unit_code: str
+    contract_size: Decimal
+    tick_size: Decimal
+    tick_value: Decimal
+    expiry_date: date
+    settlement_type: str
+    margin_currency_code: str
+    first_notice_date: date | None = None
+    last_trade_date: date | None = None
+    delivery_grade: str | None = None
+    delivery_location: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.instrument_id, UUID):
+            raise TypeError("derivative instrument_id must be UUID")
+        if not _ASSET_ID_PATTERN.fullmatch(self.underlying_asset_id):
+            raise ValueError("derivative underlying asset ID is invalid")
+        for value_name in ("contract_size", "tick_size", "tick_value"):
+            value = getattr(self, value_name)
+            if not isinstance(value, Decimal) or not value.is_finite() or value <= 0:
+                raise ValueError(f"{value_name} must be a positive finite Decimal")
+        if self.settlement_type not in {"cash", "physical"}:
+            raise ValueError("settlement_type must be cash or physical")
+        if not re.fullmatch(r"[A-Z]{3}", self.margin_currency_code):
+            raise ValueError("margin currency must be ISO alpha-3")
+        if self.first_notice_date and self.first_notice_date > self.expiry_date:
+            raise ValueError("first notice date cannot be after expiry")
+        if self.last_trade_date and self.last_trade_date > self.expiry_date:
+            raise ValueError("last trade date cannot be after expiry")
+        if self.first_notice_date and self.last_trade_date:
+            if self.first_notice_date > self.last_trade_date:
+                raise ValueError("first notice date cannot follow last trade date")
+
+
+@dataclass(frozen=True, slots=True)
+class BondContractSpec:
+    instrument_id: UUID
+    issuer_asset_id: str
+    currency_code: str
+    face_value: Decimal
+    issue_date: date
+    maturity_date: date
+    coupon_type: str
+    coupon_rate: Decimal
+    coupon_frequency: int
+    day_count_convention: str
+    seniority: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.instrument_id, UUID):
+            raise TypeError("bond instrument_id must be UUID")
+        if not _ASSET_ID_PATTERN.fullmatch(self.issuer_asset_id):
+            raise ValueError("bond issuer asset ID is invalid")
+        if not re.fullmatch(r"[A-Z]{3}", self.currency_code):
+            raise ValueError("bond currency must be ISO alpha-3")
+        if not isinstance(self.face_value, Decimal) or not self.face_value.is_finite() or self.face_value <= 0:
+            raise ValueError("bond face value must be a positive finite Decimal")
+        if not isinstance(self.coupon_rate, Decimal) or not self.coupon_rate.is_finite() or self.coupon_rate < 0:
+            raise ValueError("bond coupon rate must be a non-negative finite Decimal")
+        if self.maturity_date <= self.issue_date:
+            raise ValueError("bond maturity must follow issue date")
+        if self.coupon_type not in {"fixed", "floating", "zero", "inflation_linked"}:
+            raise ValueError("unsupported bond coupon type")
+        if self.coupon_frequency not in {0, 1, 2, 4, 6, 12}:
+            raise ValueError("unsupported bond coupon frequency")
+        if not self.day_count_convention.strip() or not self.seniority.strip():
+            raise ValueError("bond day-count convention and seniority are required")
+
+
+@dataclass(frozen=True, slots=True)
+class PredictionContractSpec:
+    instrument_id: UUID
+    event_id: str
+    question: str
+    outcomes: tuple[str, ...]
+    resolution_source_url: str
+    resolution_deadline: object
+    settlement_currency_code: str
+    payout_per_contract: Decimal
+
+    def __post_init__(self) -> None:
+        from datetime import datetime
+        from urllib.parse import urlparse
+
+        if not isinstance(self.instrument_id, UUID):
+            raise TypeError("prediction instrument_id must be UUID")
+        if not self.event_id.strip() or not self.question.strip():
+            raise ValueError("prediction event ID and question are required")
+        outcomes = tuple(self.outcomes)
+        if len(outcomes) < 2 or any(not item.strip() for item in outcomes):
+            raise ValueError("prediction contract requires at least two named outcomes")
+        if len(set(outcomes)) != len(outcomes):
+            raise ValueError("prediction outcomes must be unique")
+        parsed = urlparse(self.resolution_source_url)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ValueError("resolution source must be an HTTPS URL")
+        if not isinstance(self.resolution_deadline, datetime):
+            raise TypeError("resolution deadline must be a datetime")
+        if self.resolution_deadline.tzinfo is None:
+            raise ValueError("resolution deadline must be timezone-aware")
+        if not re.fullmatch(r"[A-Z]{3}", self.settlement_currency_code):
+            raise ValueError("settlement currency must be ISO alpha-3")
+        if (
+            not isinstance(self.payout_per_contract, Decimal)
+            or not self.payout_per_contract.is_finite()
+            or self.payout_per_contract <= 0
+        ):
+            raise ValueError("prediction payout must be a positive finite Decimal")
+        object.__setattr__(self, "outcomes", outcomes)
