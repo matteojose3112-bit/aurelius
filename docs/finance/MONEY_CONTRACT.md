@@ -26,7 +26,17 @@ Currency scale is a property of the currency, not a universal two-decimal assump
 | KWD | 3 | 1.234 |
 | USD | 2 | 1.23 |
 
-The registry is intentionally explicit. Unknown codes fail closed; do not silently assume two decimals. Expand the registry through reviewed tests and authoritative currency metadata before supporting additional currencies.
+The registry is source-versioned. Unknown codes and codes without a published exponent fail closed; do not silently assume two decimals. Registry updates require reviewed source snapshots and regression tests.
+
+## 2.1 Versioned ISO 4217 reference data
+
+The domain now bundles SIX's ISO 4217 List One (current currencies and funds) and List Three (historical denominations) as a versioned snapshot. The current bundled release contains 178 current codes, of which 165 publish a minor-unit exponent. The historical bundle preserves 152 code/withdrawal-date records across 137 distinct codes; the same code may have different withdrawal dates in different jurisdictions.
+
+The snapshot updater at backend/scripts/update_iso4217_snapshot.py downloads the official SIX XML lists and regenerates the JSON data file. This is a maintainer action; the application does not fetch currency definitions at runtime. The official source and release dates are stored with the snapshot.
+
+Money uses the current registry instead of a hard-coded allowlist. It accepts current List One entries with a published minor-unit exponent, including fund-flagged monetary/accounting units. That is an arithmetic capability, **not** permission to use every code as a cash account denomination. Future account creation must distinguish spendable cash currencies from fund codes, index units, precious-metal reference codes, and other special-purpose units.
+
+List Three does not publish minor-unit exponents. Aurelius preserves historical codes, names, numeric codes, country associations, and jurisdiction-specific withdrawal dates, but does not infer historical precision from a replacement currency. Exact historical monetary interpretation requires an appropriate historical List One snapshot or separately verified source.
 
 ## 3. Rounding
 
@@ -62,7 +72,7 @@ Before any endpoint migration:
 
 ## 7. Initial implementation
 
-`backend/app/domain/money.py` provides an immutable `Money` value object, an explicit initial currency registry, currency-scale normalization, fixed-scale serialization, exact integer-minor-unit construction and conversion, canonical zero serialization, and same-currency addition/subtraction. Its tests cover rounding, scale, float rejection, invalid values, unknown currencies, and cross-currency arithmetic.
+backend/app/domain/money.py provides an immutable Money value object backed by backend/app/domain/currency.py and the bundled SIX ISO 4217 snapshot. It supports registry-backed scale normalization, fixed-scale serialization, exact integer-minor-unit construction/conversion, canonical zero, and same-currency arithmetic. Tests cover current/historical registry facts, country-specific withdrawal dates, importer parsing, 0/2/3/4-decimal precision, float rejection, invalid values, and cross-currency arithmetic.
 
 ## 8. Non-goals
 
