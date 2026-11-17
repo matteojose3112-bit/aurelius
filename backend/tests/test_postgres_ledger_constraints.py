@@ -1,7 +1,7 @@
 """Integration tests that must run against disposable PostgreSQL 16."""
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 import os
 from threading import Event
@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.models import User
 from app.persistence.currency_registry_seed import seed_currency_registry
 from app.persistence.models import (
+    AccountingPeriodModel,
     CurrencyDefinitionModel,
     FinancialAccountModel,
     JournalEntryModel,
@@ -357,5 +358,135 @@ def test_postgres_rejects_minor_units_at_10_to_the_38(pg_session):
     )
     pg_session.add_all([journal, *postings])
     with pytest.raises(IntegrityError, match="ck_journal_postings_integral_minor_units"):
+        pg_session.commit()
+    pg_session.rollback()
+
+
+def test_postgres_rejects_cross_owner_posting_foreign_key(pg_session):
+    owner_a, usd, _, debit_account, _ = setup_owner_and_accounts(pg_session)
+    owner_b = User(email=f"{uuid4()}@aurelius.test", password_hash="test-only")
+    pg_session.add(owner_b)
+    pg_session.flush()
+    other_account = FinancialAccountModel(
+        id=uuid4(),
+        owner_id=owner_b.id,
+        name="Other owner's cash",
+        account_type="ASSET",
+        currency_definition_id=usd.id,
+        status="OPEN",
+    )
+    pg_session.add(other_account)
+    pg_session.flush()
+
+    journal_id = uuid4()
+    journal = JournalEntryModel(
+        id=journal_id,
+        owner_id=owner_a.id,
+        effective_date=date(2026, 11, 17),
+        description="Cross-owner attempt",
+        currency_definition_id=usd.id,
+        status="POSTED",
+        created_by=owner_a.id,
+    )
+    pg_session.add(journal)
+    pg_session.add_all([
+        JournalPostingModel(
+            id=uuid4(), journal_entry_id=journal_id, owner_id=owner_a.id,
+            account_id=debit_account.id, currency_definition_id=usd.id,
+            side="DEBIT", amount_minor=Decimal("100"),
+        ),
+        JournalPostingModel(
+            id=uuid4(), journal_entry_id=journal_id, owner_id=owner_a.id,
+            account_id=other_account.id, currency_definition_id=usd.id,
+            side="CREDIT", amount_minor=Decimal("100"),
+        ),
+    ])
+    with pytest.raises(IntegrityError, match="fk_journal_postings_account_owner_currency"):
+        pg_session.commit()
+    pg_session.rollback()
+
+
+def test_postgres_rejects_cross_currency_posting_foreign_key(pg_session):
+    owner, usd, cad, debit_account, _ = setup_owner_and_accounts(pg_session)
+    cad_account = FinancialAccountModel(
+        id=uuid4(), owner_id=owner.id, name="CAD cash",
+        account_type="ASSET", currency_definition_id=cad.id, status="OPEN",
+    )
+    pg_session.add(cad_account)
+    pg_session.flush()
+
+    journal_id = uuid4()
+    pg_session.add(JournalEntryModel(
+        id=journal_id, owner_id=owner.id, effective_date=date(2026, 11, 17),
+        description="Cross-currency attempt", currency_definition_id=usd.id,
+        status="POSTED", created_by=owner.id,
+    ))
+    pg_session.add_all([
+        JournalPostingModel(
+            id=uuid4(), journal_entry_id=journal_id, owner_id=owner.id,
+            account_id=debit_account.id, currency_definition_id=usd.id,
+            side="DEBIT", amount_minor=Decimal("100"),
+        ),
+        JournalPostingModel(
+            id=uuid4(), journal_entry_id=journal_id, owner_id=owner.id,
+            account_id=cad_account.id, currency_definition_id=usd.id,
+            side="CREDIT", amount_minor=Decimal("100"),
+        ),
+    ])
+    with pytest.raises(IntegrityError, match="fk_journal_postings_account_owner_currency"):
+        pg_session.commit()
+    pg_session.rollback()
+
+
+def test_postgres_accounting_periods_cannot_overlap_for_owner(pg_session):
+    owner = User(email=f"{uuid4()}@aurelius.test", password_hash="test-only")
+    pg_session.add(owner)
+    pg_session.flush()
+    pg_session.add_all([
+        AccountingPeriodModel(
+            id=uuid4(), owner_id=owner.id,
+            starts_on=date(2026, 1, 1), ends_on=date(2026, 1, 31), status="OPEN",
+        ),
+        AccountingPeriodModel(
+            id=uuid4(), owner_id=owner.id,
+            starts_on=date(2026, 1, 15), ends_on=date(2026, 2, 15), status="OPEN",
+        ),
+    ])
+    with pytest.raises(IntegrityError, match="ex_accounting_periods_owner_no_overlap"):
+        pg_session.commit()
+    pg_session.rollback()
+
+
+def test_postgres_idempotency_completion_is_one_time(pg_session):
+    owner, _, _, _, _ = setup_owner_and_accounts(pg_session)
+    record = IdempotencyRecordModel(
+        id=uuid4(), owner_id=owner.id, operation="create_journal",
+        idempotency_key=str(uuid4()), request_hash="b" * 64,
+    )
+    pg_session.add(record)
+    pg_session.commit()
+
+    record.response_status = 201
+    record.response_body = {"journal_id": str(uuid4())}
+    record.completed_at = datetime.now(timezone.utc)
+    pg_session.commit()
+
+    record.response_body = {"journal_id": "tampered"}
+    with pytest.raises(DBAPIError, match="completed idempotency result is immutable"):
+        pg_session.commit()
+    pg_session.rollback()
+
+
+def test_postgres_currency_registry_rows_are_append_only(pg_session):
+    setup_owner_and_accounts(pg_session)
+    pg_session.commit()
+    usd = pg_session.scalars(
+        select(CurrencyDefinitionModel).where(
+            CurrencyDefinitionModel.code == "USD",
+            CurrencyDefinitionModel.registry_list == "one",
+        )
+    ).one()
+    usd.name = "Tampered currency"
+    with pytest.raises(DBAPIError, match="append-only"):
         pg_session.commit()
     pg_session.rollback()
