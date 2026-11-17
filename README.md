@@ -402,3 +402,6 @@ Seed illustrative unit and asset definitions explicitly after migration:
 - Production additionally requires --allow-production.
 
 No market prices, provider subscriptions, broker access, listings, or futures expiries are included in the seed. The instrument master remains separate from owner portfolios and from the cash ledger.
+
+
+PostgreSQL 16 CI validates the instrument-master migration, temporal exclusion constraints, append-only guards, reference seeding, derivative/bond/prediction specifications, market observations, and forecast resolution. Latest validated run: **31 PostgreSQL integration tests passed; 125 backend tests passed** (31 PostgreSQL-only cases are skipped in the SQLite backend job). Frontend tests/build also pass.
