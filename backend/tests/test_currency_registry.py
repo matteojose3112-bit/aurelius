@@ -45,10 +45,10 @@ def test_reference_codes_without_minor_units_are_not_money(code):
         DEFAULT_CURRENCY_REGISTRY.get_money_unit(code)
 
 
-def test_fund_codes_are_not_accepted_as_money_units():
-    fund = next(item for item in DEFAULT_CURRENCY_REGISTRY.current_definitions if item.fund)
-    with pytest.raises(ValueError, match="not a current monetary unit"):
-        DEFAULT_CURRENCY_REGISTRY.get_money_unit(fund.code)
+def test_fund_flagged_indexed_units_keep_their_published_precision():
+    clf = DEFAULT_CURRENCY_REGISTRY.get_money_unit("CLF")
+    assert clf.fund is True
+    assert clf.minor_unit_exponent == 4
 
 
 def test_snapshot_loader_rejects_duplicate_codes():
