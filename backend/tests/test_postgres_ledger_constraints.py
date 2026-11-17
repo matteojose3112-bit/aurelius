@@ -43,6 +43,8 @@ from app.persistence.market_data_ingestion import (
     ProviderLicenseError,
     ingest_market_observations,
 )
+from app.providers.ecb_reference_fx import ECBReferenceFXAdapter, ECBSeriesMapping
+import httpx
 from app.persistence.models import (
     AccountingPeriodModel,
     AuditEventModel,
@@ -1356,3 +1358,90 @@ def test_market_data_ingestion_rejects_provider_rows_outside_request(pg_session,
     assert pg_session.scalar(
         select(func.count()).select_from(MarketObservationModel)
     ) == 0
+
+
+
+def test_ecb_adapter_to_postgres_ingestion_is_exact_attributed_and_idempotent(
+    pg_session, pg_engine
+):
+    seed_global_reference_data(pg_session)
+    seed_currency_registry(pg_session)
+    usd = pg_session.scalars(
+        select(CurrencyDefinitionModel).where(
+            CurrencyDefinitionModel.code == "USD",
+            CurrencyDefinitionModel.registry_list == "one",
+        )
+    ).one()
+    instrument = InstrumentDefinitionModel(
+        id=uuid4(),
+        instrument_type="spot_fx_pair",
+        name="EUR/USD ECB daily reference rate",
+        underlying_asset_id="fx.eur_usd_pair",
+        quote_currency_definition_id=usd.id,
+        source_id="ecb-reference-series-mapping",
+    )
+    source = ProviderSourceModel(
+        id=uuid4(),
+        provider_key="ecb_data_portal",
+        name="European Central Bank Data Portal",
+        category="fx_reference",
+        website_url="https://data.ecb.europa.eu/",
+        license_name="ESCB statistics reuse policy",
+        license_url="https://www.ecb.europa.eu/stats/ecb_statistics/governance_and_quality_framework/html/usage_policy.en.html",
+        terms_version="ecb-escb-reuse-2026-11-17",
+        rights_scope="internal_research",
+        geographic_coverage={"global": True},
+        status="ACTIVE",
+    )
+    pg_session.add_all([instrument, source])
+    pg_session.commit()
+
+    csv_data = """KEY,FREQ,CURRENCY,CURRENCY_DENOM,EXR_TYPE,EXR_SUFFIX,TIME_PERIOD,OBS_VALUE
+D.USD.EUR.SP00.A,D,USD,EUR,SP00,A,2026-11-16,1.1580
+D.USD.EUR.SP00.A,D,USD,EUR,SP00,A,2026-11-17,1.1605
+"""
+    client = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, text=csv_data)
+        )
+    )
+    adapter = ECBReferenceFXAdapter(
+        (ECBSeriesMapping(instrument.id, "USD"),), client=client
+    )
+    start = datetime(2026, 11, 16, tzinfo=timezone.utc)
+    request = MarketDataRequest(
+        instrument_ids=(instrument.id,),
+        observation_types=("reference_rate",),
+        start_at=start,
+        end_at=datetime(2026, 11, 17, 23, 59, tzinfo=timezone.utc),
+        asset_class="fx_pair",
+        instrument_type="spot_fx_pair",
+        granularity="daily",
+    )
+    policy = ProviderLicensePolicy(
+        provider_key="ecb_data_portal",
+        terms_version="ecb-escb-reuse-2026-11-17",
+        allowed_purposes=("internal_research",),
+        global_region_coverage=True,
+        attribution_required=True,
+        redistribution_allowed=False,
+    )
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    try:
+        first = ingest_market_observations(
+            factory, source.id, adapter, request, policy, purpose="internal_research"
+        )
+        second = ingest_market_observations(
+            factory, source.id, adapter, request, policy, purpose="internal_research"
+        )
+    finally:
+        client.close()
+
+    assert (first.received, first.inserted, first.duplicates) == (2, 2, 0)
+    assert (second.received, second.inserted, second.duplicates) == (2, 0, 2)
+    rows = pg_session.scalars(
+        select(MarketObservationModel).order_by(MarketObservationModel.observed_at)
+    ).all()
+    assert [row.value for row in rows] == [Decimal("1.1580"), Decimal("1.1605")]
+    assert all(row.license_reference == policy.terms_version for row in rows)
+    assert all(row.quote_currency_definition_id == usd.id for row in rows)
