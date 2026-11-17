@@ -482,3 +482,14 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [ ] Add holdings, position lots, portfolio valuation, and market risk.
 
 - [x] Validate Alembic 0003 on SQLite and PostgreSQL 16 CI; verify temporal exclusion and append-only guards. Latest run: 31 PostgreSQL integration tests and 125 backend tests passed.
+
+
+## Foundation 0.5 — provider adapters and licensed ingestion
+
+- [x] Define provider capabilities, coverage, data request, observation, and license-policy contracts.
+- [x] Require explicit region/venue/global coverage; no implicit assumption of worldwide availability.
+- [x] Add license-aware PostgreSQL ingestion service with source/terms validation and exact Decimal values.
+- [x] Add observation deduplication by provider source, source record ID, observation type, and instrument.
+- [ ] Add first live reference/market data provider after terms, coverage, and licensing review.
+- [ ] Add rate limits, retries, circuit breakers, credential handling, and provider health monitoring.
+- [ ] Add source freshness/staleness policy and coverage reports.
