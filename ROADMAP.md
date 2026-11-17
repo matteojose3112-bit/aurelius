@@ -412,3 +412,5 @@ Implementation branch: feat/aurelius-foundation-0.3-ledger-persistence-models. N
 
 - [x] PostgreSQL 16 CI passed with 25 integration tests covering posting/reversal concurrency, rollback after partial writes, and account close/post serialization.
 - [x] Full CI passed on the latest service branch head: PostgreSQL integration, SQLite backend, frontend tests, and frontend build.
+
+- [x] Add bounded retry for transient PostgreSQL serialization/deadlock/connection errors, reusing the same idempotency key to handle unknown commit outcomes.
