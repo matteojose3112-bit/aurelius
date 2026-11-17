@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Refresh the bundled ISO 4217 snapshot from SIX's official XML lists.
 
-This is a maintainer command, not application runtime behavior:
+Maintainer command (not application runtime behavior):
     python backend/scripts/update_iso4217_snapshot.py
-It downloads List One (current currencies/funds) and List Three (historical
-denominations), groups current rows by code and historical rows by code plus
-country-specific withdrawal date, and writes the deterministic JSON snapshot consumed by the domain.
+Current List One rows are grouped by currency code. Historical List Three rows
+are grouped by code AND withdrawal date because a shared currency code can have
+different withdrawal dates in different jurisdictions.
 """
 from __future__ import annotations
 
@@ -64,7 +64,6 @@ def parse_current(xml_bytes: bytes) -> tuple[str, list[dict]]:
         code = text(entry, "Ccy")
         name = text(entry, "CcyNm")
         if not code or not name:
-            # ISO includes entities with no universal currency; they have no code.
             continue
         numeric = text(entry, "CcyNbr")
         raw_exponent = text(entry, "CcyMnrUnts")
@@ -74,9 +73,8 @@ def parse_current(xml_bytes: bytes) -> tuple[str, list[dict]]:
             name_element is not None
             and name_element.attrib.get("IsFund", "").lower() == "true"
         )
-        key = (code, withdrawn)
         row = grouped.setdefault(
-            key,
+            code,
             {
                 "code": code,
                 "numeric_code": numeric,
@@ -98,7 +96,7 @@ def parse_current(xml_bytes: bytes) -> tuple[str, list[dict]]:
         if country and country not in row["countries"]:
             row["countries"].append(country)
 
-    return published, [grouped[key] for key in sorted(grouped, key=lambda item: (item[0], item[1] or ""))]
+    return published, [grouped[code] for code in sorted(grouped)]
 
 
 def parse_historical(xml_bytes: bytes) -> tuple[str, list[dict]]:
@@ -115,8 +113,9 @@ def parse_historical(xml_bytes: bytes) -> tuple[str, list[dict]]:
             continue
         numeric = text(entry, "CcyNbr")
         withdrawn = text(entry, "WthdrwlDt")
+        key = (code, withdrawn)
         row = grouped.setdefault(
-            code,
+            key,
             {
                 "code": code,
                 "numeric_code": numeric,
@@ -136,7 +135,8 @@ def parse_historical(xml_bytes: bytes) -> tuple[str, list[dict]]:
         if country and country not in row["countries"]:
             row["countries"].append(country)
 
-    return published, [grouped[code] for code in sorted(grouped)]
+    ordered = sorted(grouped, key=lambda item: (item[0], item[1] or ""))
+    return published, [grouped[key] for key in ordered]
 
 
 def build_snapshot(list_one: bytes, list_three: bytes) -> dict:
@@ -144,9 +144,7 @@ def build_snapshot(list_one: bytes, list_three: bytes) -> dict:
     historical_date, historical = parse_historical(list_three)
     return {
         "schema_version": 1,
-        "registry_release": (
-            f"SIX-ISO4217-L1-{current_date}+L3-{historical_date}"
-        ),
+        "registry_release": f"SIX-ISO4217-L1-{current_date}+L3-{historical_date}",
         "source": {
             "publisher": "SIX Group / SIX Interbank Clearing Ltd",
             "authority": "ISO 4217 Maintenance Agency",
@@ -176,7 +174,7 @@ def main() -> int:
             return 1
         print(
             f"ISO 4217 snapshot current: {len(snapshot['current'])} current codes, "
-            f"{len(snapshot['historical'])} historical codes, "
+            f"{len(snapshot['historical'])} jurisdiction/date historical records, "
             f"release {snapshot['registry_release']}"
         )
         return 0
@@ -185,7 +183,7 @@ def main() -> int:
     args.output.write_text(rendered, encoding="utf-8")
     print(
         f"Wrote {args.output}: {len(snapshot['current'])} current codes, "
-        f"{len(snapshot['historical'])} historical codes, "
+        f"{len(snapshot['historical'])} jurisdiction/date historical records, "
         f"release {snapshot['registry_release']}"
     )
     return 0
