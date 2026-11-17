@@ -61,7 +61,7 @@ The sections below document the existing FinTrack MVP and its current setup whil
 
 FinTrack brings income, expenses, budgets, savings goals, and financial insights into one clear workspace, with a responsive React interface and Python API.
 
-![Status](https://img.shields.io/badge/status-Render%20Blueprint%20provisioned-0d9488)
+![Status](https://img.shields.io/badge/status-Aurelius%20transformation%20in%20progress-0d9488)
 ![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61dafb)
 ![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
 ![License](https://img.shields.io/badge/license-MIT-blue)
