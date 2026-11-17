@@ -36,3 +36,8 @@ class Goal(Base):
     name = Column(String(120), nullable=False)
     target_amount = Column(Float, nullable=False)
     saved_amount = Column(Float, nullable=False, default=0)
+
+
+# Register Aurelius persistence tables on the shared metadata used by Alembic.
+from app.persistence import models as aurelius_persistence_models  # noqa: F401,E402
+from app.persistence import instrument_models as aurelius_instrument_models  # noqa: F401,E402

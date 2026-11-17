@@ -1,3 +1,39 @@
+## [Unreleased] — Foundation 0.2 Accounts & Ledger — 2026-11-17\n\n### Added\n- Added immutable FinancialAccount domain identities with owner scope, account classification, currency validation, lifecycle status, and accounting normal-side rules.\n- Added immutable balanced single-currency journal entries and strictly positive debit/credit postings.\n- Added append-only in-memory ledger posting, derived account balances, same-owner same-currency asset transfers, and exact one-time reversal entries.\n- Added accounting golden-case tests for opening balances, income, expenses, transfers, reversals, ownership isolation, currency matching, and invalid postings.\n- Added the Account and Ledger Contract, including persistence design gates and explicit FX exclusions.\n\n### Validation and boundaries\n- Foundation 0.2 code and tests are committed on feat/aurelius-foundation-0.2-accounts-ledger; GitHub Actions run [#136](https://github.com/matteojose3112-bit/aurelius/actions/runs/44185872151) passed both backend and frontend jobs for this branch. Backend compile, Alembic SQLite upgrade, full pytest suite, frontend tests, and production build completed successfully.\n- Domain-only implementation: no API, SQLAlchemy model, Alembic migration, frontend, Render configuration, production data, or deployment changed.\n- The in-memory ledger is not a durable audit store or concurrency-safe persistence implementation.\n\n## [Unreleased] — Money primitive hardening — 2026-11-17
+
+### Added
+- Added exact `Money.from_minor_units()` construction for currencies with zero-, two-, and three-decimal exponents.
+- Canonicalized rounded zero values so negative zero cannot leak into serialized financial output.
+- Added regression tests for minor-unit round trips, invalid minor-unit types, and canonical zero.
+
+### Validation
+- New changes are committed on `feat/aurelius-foundation-0.1`; CI for the updated head is pending.
+
+## [Unreleased] — Foundation 0.1 CI validation — 2026-11-17
+
+### Validation
+- GitHub Actions run [#125](https://github.com/matteojose3112-bit/aurelius/actions/runs/44184005586) passed both jobs on `feat/aurelius-foundation-0.1`.
+- Backend job passed dependency installation, Python compile check, Alembic SQLite upgrade, and the complete `backend/tests` pytest suite.
+- Frontend job passed dependency installation, frontend tests, and production build.
+- This validates the current feature-branch baseline only; it does not merge the branch, change production API/database contracts, or authorize deployment.
+
+### Boundaries
+- `Money` remains an isolated domain primitive; legacy API, SQLAlchemy models, migrations, and frontend monetary arithmetic are not yet migrated.
+- No production data, Render infrastructure, secrets, deployment, paid provider, brokerage connection, or money movement changed.
+
+## [Unreleased] — Aurelius Foundation 0.1 — 2026-11-17
+
+### Added
+- Renamed the GitHub repository to `matteojose3112-bit/aurelius`; legacy FinTrack application and Render identifiers remain unchanged pending a separate compatibility review.
+- Added an infrastructure-independent `Money` value object using Python `Decimal`, explicit currency exponents, fixed-scale decimal-string serialization, integer minor units, and same-currency arithmetic.
+- Added unit tests for currency scales, `ROUND_HALF_UP` normalization, non-finite values, float rejection, unknown currencies, and cross-currency arithmetic.
+- Added the money/currency contract, ADR-0001 architecture decision, and Foundation 0.1 implementation status.
+
+### Validation and boundaries
+- Feature branch: `feat/aurelius-foundation-0.1`; CI validation is pending.
+- Existing API, database models, migrations, frontend arithmetic, and production data have not been changed.
+- No Render configuration, infrastructure, secrets, deployment, paid provider, brokerage connection, or money movement changed.
+- Real-money trading and brokerage execution remain disabled.
+
 ## [Unreleased] — Aurelius transformation assessment — 2026-11-17
 
 ### Product direction
@@ -223,8 +259,158 @@ All notable project changes are documented here.
 
 ## Post-merge status — 2026-11-17
 
-- Merged Aurelius transformation documentation PR [#13](https://github.com/matteojose3112-bit/fintrack/pull/13) into `main` at merge commit [560348f](https://github.com/matteojose3112-bit/fintrack/commit/560348f18f96827c1bce0fd4d3079cbb5c0730be).
+- Merged Aurelius transformation documentation PR [#13](https://github.com/matteojose3112-bit/aurelius/pull/13) into `main` at merge commit [560348f](https://github.com/matteojose3112-bit/aurelius/commit/560348f18f96827c1bce0fd4d3079cbb5c0730be).
 - The merge contains README, ROADMAP, and CHANGELOG updates (461 additions, 2 deletions); GitHub reported two checks passed and no deployment was created.
 - Earlier entries in this changelog describe the pre-merge state and are historical. The merged Aurelius planning documents are now on `main`.
 - This was documentation-only: no application code, production data, Render infrastructure, secrets, deployment, paid service, or brokerage action changed.
 - Follow-up required: reconcile the historical release-hardening statements with the current status of PRs #3–#12 before treating the release baseline as current. Do not infer that merging PR #13 merged or deployed those separate changes.
+
+
+## Unreleased — Foundation 0.2.1 — 2026-11-17
+
+### Added
+- Defined the ledger hardening contract for owner-scoped idempotency, canonical request fingerprints, retry-safe replay, and changed-payload conflicts.
+- Specified atomic posting, deterministic account lock order, unique reversal constraints, append-only database protections, account closure, effective dating, and backdated-entry policy.
+- Added reconciliation/import-deduplication and correction golden scenarios.
+- Reviewed legacy PR #10 and integration PR #12: Numeric(14,2) remains a legacy MVP convention and is not the canonical multi-currency ledger persistence design.
+
+### Status
+- Foundation 0.2.1 is a design baseline only. The in-memory ledger remains non-durable and non-concurrency-safe; API, schema, migrations, and PostgreSQL concurrency tests remain future work.
+- No merge, deployment, Render change, production data write, brokerage connection, or external financial action was performed.
+
+
+## Unreleased — Foundation 0.3 — 2026-11-17
+
+### Added
+- Proposed canonical integer minor-unit persistence in PostgreSQL `NUMERIC(38,0)` with a hard 38-digit bound and immutable currency exponent/version snapshots.
+- Designed logical PostgreSQL schema for currency definitions, accounts, journal entries, postings, idempotency, audit events, and accounting periods.
+- Specified atomic posting, deferred balance validation, append-only protection, exact-string API money contracts, and disposable PostgreSQL concurrency tests.
+- Documented future Ollama provider-adapter architecture with AI restricted to advisory/draft workflows behind deterministic financial controls.
+
+### Status
+- Foundation 0.3 is design-only. No SQLAlchemy models, Alembic migrations, API routes, databases, production data, deployments, or Ollama runtime integration were created.
+
+
+## Unreleased — Foundation 0.3 global groundwork — 2026-11-17
+
+### Added
+- Inspected legacy authentication and migration model; documented INTEGER users.id ownership compatibility.
+- Selected PostgreSQL 16 as a disposable CI baseline (hosted database version remains unverified) and deferred constraint triggers for commit-time ledger invariants.
+- Expanded the persistence design for international users, ISO 4217 registry versioning, historical currency definitions, FX provenance, global instruments/listings, MIC venues, timezone, locale, and jurisdiction separation.
+
+### Status
+- This commit records architecture decisions and inspection only. No ORM models, migrations, API endpoints, local/hosted database changes, Render operations, or deployments were performed.
+
+
+## Unreleased — Foundation 0.3 currency registry — 2026-11-17
+
+### Added
+- Added a bundled, versioned ISO 4217 snapshot based on SIX List One (178 current codes) and List Three (152 jurisdiction/withdrawal-date records across 137 historical codes).
+- Added a maintainer-only XML updater that fetches the official SIX List One and List Three sources; the application performs no runtime network calls for currency definitions.
+- Replaced the hard-coded eight-currency exponent map with registry-backed Money precision for current ISO monetary units with published exponents.
+- Preserved numeric codes as three-character strings, fund flags, country associations, historical withdrawal dates, and unknown historical exponents without guessing.
+- Added tests for global currency coverage, 0/2/3/4-decimal units, reference-code rejection, fund/unit metadata, jurisdiction-specific history, and XML parsing.
+- Added global asset/instrument coverage architecture for commodities, securities, derivatives, digital assets, real/alternative assets, prediction markets, macro benchmarks, and liabilities.
+
+### Status
+- Implementation is committed to an isolated draft feature branch. CI validation is pending. No ORM models, Alembic migrations, PostgreSQL database, API integration, Render changes, or deployment are included in this slice.
+
+
+## Unreleased — Foundation 0.3 persistence models — 2026-11-17
+
+### Added
+- Added SQLAlchemy models for the global currency registry, financial accounts, journal entries, journal postings, idempotency, audit events, accounting periods, and owner reporting preferences.
+- Added owner/currency composite foreign keys so postings cannot link a journal and account from different owners or currency definitions.
+- Added Alembic migration 0002 for the new ledger persistence schema, with PostgreSQL deferred journal-balance and reversal validation, append-only guards, account identity protection, and accounting-period overlap enforcement.
+- Added idempotent currency-registry seeding that preserves immutable published definitions and historical withdrawal-date records.
+- Added persistence-model and registry-seed tests.
+
+### Status
+- Implementation is isolated on a draft feature branch. CI validation is pending. PostgreSQL concurrency behavior remains unverified until the disposable PostgreSQL 16 test job is added. No hosted database, API, Render configuration, production data, or deployment changed.
+
+
+## Unreleased — Foundation 0.3 PostgreSQL integration validation — 2026-11-17
+
+### Added
+- Added a disposable PostgreSQL 16 service and a dedicated CI job that applies Alembic migrations and runs real database constraint/concurrency tests.
+- Added PostgreSQL checks for exact integral minor units, 38-digit posting bounds, deferred journal balancing, reversal symmetry, closed-account rules, append-only records, transaction rollback, and concurrent idempotency-key uniqueness.
+
+### Status
+- Latest full CI run passed: PostgreSQL 16 migration and 16 database integration tests, SQLite backend tests, frontend tests, and frontend build. SQLite migration/test success is not treated as PostgreSQL validation. No hosted database or production environment was used.
+
+
+## Unreleased — Foundation 0.3 atomic posting service — 2026-11-17
+
+### Added
+- Added a transaction-owning PostgreSQL posting service that atomically claims idempotency, locks accounts in sorted UUID order, writes journal/postings/audit, completes the replayable result, and commits once.
+- Added canonical request hashing, same-key/same-payload replay, and changed-payload conflict behavior.
+- Added configured accounting-period checks and exact reversal creation serialized on the source journal.
+- Added service-level exceptions for account ownership/status, currency, idempotency, period, and reversal conflicts.
+
+### Status
+- Service is implemented but not yet connected to API routes. PostgreSQL concurrency/rollback tests are being added before API integration.
+
+- PostgreSQL 16 CI passed with 25 integration tests, including service-level replay/conflict, competing reversals, account close/post serialization, and failure-injection rollback. Full backend/frontend CI passed on the validated branch head.
+
+- Added bounded three-attempt retry for transient PostgreSQL serialization/deadlock/connection failures. Retries reuse the same idempotency key, so unknown commit outcomes safely replay or execute once.
+
+
+## Unreleased — Foundation 0.3 versioned ledger API — 2026-11-17
+
+### Added
+- Exposed authenticated v1 endpoints for current cash currency discovery, owner-scoped financial account creation/listing, native-currency balance derivation, journal posting/reads, and exact reversals.
+- Added strict request schemas using integer minor-unit strings and UUID account identifiers; owner identity comes exclusively from JWT context.
+- Added a dry-run-by-default currency registry seed CLI; explicit --apply is required, and production additionally requires --allow-production.
+- Added PostgreSQL API integration tests for account creation, idempotent journal posting/replay, balance derivation, journal reads, reversal, authentication, and cross-owner isolation.
+
+### Status
+- PostgreSQL 16 migration, persistence, posting service, and initial API integration are validated in CI. No hosted database, registry seed, Render resource, production record, broker, or deployment was touched.
+
+- PostgreSQL 16 API integration now passes 27 tests, including authenticated owner isolation and fail-closed behavior before registry seeding.
+
+
+## Unreleased — Foundation 0.4 global asset ontology — 2026-11-17
+
+### Added
+- Added an extensible asset/instrument domain that distinguishes underlying assets from financial instruments and their identifiers.
+- Added exact rational unit definitions for mass, volume, energy, securities, derivatives, tokens, event contracts, and area.
+- Added context-required quantity units for commodity-specific measures such as bushels.
+- Added an illustrative commodity catalog spanning precious metals, industrial metals, crude oil, natural gas, agriculture, and electricity.
+- Added tests for exact unit conversion, dimension mismatch, contextual-unit safety, open asset classes, and time-bounded identifiers.
+
+### Status
+- Domain groundwork only. Instrument master persistence, venue/listing registry, contract specs, market observations, data providers, portfolio holdings, and trading are not yet implemented.
+
+- Expanded representative asset examples to include equities, sovereign debt, ETFs, cryptoassets, real estate, prediction events, liabilities, benchmarks, FX pairs, private equity, and derivatives.
+
+- Added market venue/listing, derivative/futures, bond, and prediction/event contract specification domain types with validation for MICs, IANA timezones, contract lifecycle, coupon terms, resolution sources, and timezone-aware deadlines.
+
+
+## Unreleased — Foundation 0.4 global instrument persistence — 2026-11-17
+
+### Added
+- Added SQLAlchemy persistence models and Alembic revision 0003 for unit/asset/instrument masters, namespaced identifiers, MIC venues, time-bounded listings, derivative/bond/prediction contract specs, provider source terms, market observations, and forecasts/resolutions.
+- Added PostgreSQL temporal exclusion constraints for overlapping identifier and venue-symbol validity windows.
+- Added append-only protection for global reference data, observations, forecasts, and resolutions.
+- Added exact immutable unit/asset seed service and a dry-run-by-default CLI with explicit production-write guard.
+
+
+
+### Validation
+- PostgreSQL 16 integration: 31 passed. Backend suite: 125 passed, 31 PostgreSQL-only tests skipped in SQLite mode. Full frontend tests/build passed on the validated PR head.
+
+### Status
+- Foundation 0.4 global reference persistence is implemented and validated in CI. No market-data provider connection, hosted database migration, production seed, Render change, deployment, or trading action was performed.
+
+
+## Unreleased — Foundation 0.5 provider adapter framework — 2026-11-17
+
+### Added
+- Added provider-neutral capability, request, observation, and licensing-policy contracts.
+- Added explicit global/regional/venue coverage checks and fail-closed purpose/region licensing.
+- Added PostgreSQL-only ingestion service that fetches outside transactions, validates instruments/units/currencies, and inserts immutable observations atomically.
+- Added a unique provider-observation deduplication index and Alembic revision 0004.
+- Added fake-provider tests for capability matching, licensing, out-of-request rows, and idempotent replay.
+
+### Status
+- No live provider adapters, credentials, paid subscriptions, external data fetches, or production data writes are included. CI validation pending.
