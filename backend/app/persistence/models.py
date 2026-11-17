@@ -103,6 +103,7 @@ class JournalEntryModel(Base):
     __table_args__ = (
         CheckConstraint("status = 'POSTED'", name="ck_journal_entries_posted_only"),
         UniqueConstraint("id", "owner_id", name="uq_journal_entries_id_owner"),
+        UniqueConstraint("reversal_of", name="uq_journal_entries_reversal_source"),
         UniqueConstraint(
             "id",
             "owner_id",
@@ -139,7 +140,7 @@ class JournalEntryModel(Base):
         nullable=False,
     )
     status: Mapped[str] = mapped_column(String(12), nullable=False, default="POSTED")
-    reversal_of: Mapped[object | None] = mapped_column(Uuid(as_uuid=True), nullable=True, unique=True)
+    reversal_of: Mapped[object | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     correction_of: Mapped[object | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     created_by: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
