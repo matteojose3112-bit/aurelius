@@ -394,5 +394,10 @@ All notable project changes are documented here.
 - Added append-only protection for global reference data, observations, forecasts, and resolutions.
 - Added exact immutable unit/asset seed service and a dry-run-by-default CLI with explicit production-write guard.
 
+
+
+### Validation
+- PostgreSQL 16 integration: 31 passed. Backend suite: 125 passed, 31 PostgreSQL-only tests skipped in SQLite mode. Full frontend tests/build passed on the validated PR head.
+
 ### Status
-- Migration and PostgreSQL validation pending. No provider data, market prices, external subscriptions, broker integrations, production database writes, or trading are included.
+- Foundation 0.4 global reference persistence is implemented and validated in CI. No market-data provider connection, hosted database migration, production seed, Render change, deployment, or trading action was performed.
