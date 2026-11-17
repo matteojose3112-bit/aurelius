@@ -82,13 +82,17 @@ def _validate_license(
         raise ProviderLicenseError("stored provider rights scope is not permitted by the supplied terms")
     if purpose not in policy.allowed_purposes:
         raise ProviderLicenseError("requested purpose is not permitted by provider terms")
-    if not policy.global_region_coverage:
+    coverage = source.geographic_coverage
+    if policy.global_region_coverage:
+        if not isinstance(coverage, dict) or coverage.get("global") is not True:
+            raise ProviderLicenseError("stored provider source does not declare global coverage")
+    else:
         if region_code is None:
             raise ProviderLicenseError("a region must be declared for region-scoped provider terms")
         if region_code not in policy.allowed_regions:
             raise ProviderLicenseError("provider license does not cover the requested region")
-        coverage = source.geographic_coverage
-        if not coverage or region_code not in coverage:
+        source_regions = coverage.get("regions", []) if isinstance(coverage, dict) else coverage
+        if not source_regions or region_code not in source_regions:
             raise ProviderLicenseError("stored provider coverage does not include the requested region")
 
 
