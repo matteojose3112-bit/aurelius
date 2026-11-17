@@ -6,9 +6,9 @@ Last updated: 2026-11-17
 
 - Added an isolated `Money` value object using Python `Decimal`.
 - Added explicit initial currency exponent metadata for BHD, CAD, COP, EUR, GBP, JPY, KWD, and USD.
-- Added fixed-scale decimal-string serialization and integer minor-unit conversion.
+- Added fixed-scale decimal-string serialization, exact construction from integer minor units, integer minor-unit conversion, and canonical zero serialization.
 - Added same-currency addition/subtraction and rejection of implicit FX arithmetic.
-- Added tests for rounding, currency scales, float rejection, non-finite values, unknown currencies, and cross-currency operations.
+- Added tests for rounding, currency scales, decimal/minor-unit round trips, canonical zero, float rejection, non-finite values, unknown currencies, and cross-currency operations.
 - Documented the money contract and architecture decision record.
 
 ## Not yet complete
