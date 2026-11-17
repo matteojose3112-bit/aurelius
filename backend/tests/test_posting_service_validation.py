@@ -143,3 +143,30 @@ def test_retry_wrapper_does_not_retry_integrity_errors(monkeypatch):
     with pytest.raises(DBAPIError):
         posting_service._run_with_transient_retry(operation)
     assert attempts["count"] == 1
+
+
+
+def test_public_posting_retry_reuses_the_exact_idempotency_key(monkeypatch):
+    from sqlalchemy.exc import DBAPIError
+    from app.persistence import posting_service
+    from app.persistence.posting_service import PostingResult
+
+    monkeypatch.setattr(posting_service, "sleep", lambda _: None)
+    command = valid_command()
+    keys = []
+
+    def fail_once_then_return(session_factory, received_command, key):
+        keys.append(key)
+        if len(keys) == 1:
+            raise DBAPIError(
+                "COMMIT",
+                {},
+                FakePostgresError("08006"),
+                connection_invalidated=True,
+            )
+        return PostingResult(201, {"journal_id": "stable-result"})
+
+    monkeypatch.setattr(posting_service, "_post_journal_once", fail_once_then_return)
+    result = posting_service.post_journal(None, command, "same-key-after-unknown-commit")
+    assert result.body["journal_id"] == "stable-result"
+    assert keys == ["same-key-after-unknown-commit", "same-key-after-unknown-commit"]
