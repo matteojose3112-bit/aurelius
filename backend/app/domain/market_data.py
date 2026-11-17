@@ -52,9 +52,6 @@ class ForecastRecord:
     generated_at: datetime
     horizon_end: datetime
     evidence_ids: tuple[str, ...] = ()
-    resolved_outcome: str | None = None
-    resolved_at: datetime | None = None
-    scoring_method: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.forecast_id, UUID):
@@ -75,9 +72,39 @@ class ForecastRecord:
         if any(not item.strip() for item in evidence):
             raise ValueError("forecast evidence identifiers must be non-empty")
         object.__setattr__(self, "evidence_ids", evidence)
-        if (self.resolved_outcome is None) != (self.resolved_at is None):
-            raise ValueError("resolved forecasts require both an outcome and resolved_at")
-        if self.resolved_outcome is not None and not self.resolved_outcome.strip():
-            raise ValueError("resolved forecast outcome must be non-empty")
-        if self.resolved_at is not None and self.resolved_at.tzinfo is None:
+
+
+
+
+@dataclass(frozen=True, slots=True)
+class ForecastResolution:
+    forecast_id: UUID
+    resolved_outcome: str
+    resolved_at: datetime
+    scoring_method: str
+    score: Decimal | None = None
+    resolution_source_url: str | None = None
+    evidence_ids: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        from urllib.parse import urlparse
+
+        if not isinstance(self.forecast_id, UUID):
+            raise TypeError("forecast_id must be UUID")
+        if not self.resolved_outcome.strip() or not self.scoring_method.strip():
+            raise ValueError("resolved outcome and scoring method are required")
+        if not isinstance(self.resolved_at, datetime) or self.resolved_at.tzinfo is None:
             raise ValueError("resolved_at must be timezone-aware")
+        if self.score is not None:
+            if not isinstance(self.score, Decimal) or not self.score.is_finite():
+                raise ValueError("forecast score must be a finite Decimal")
+            if not Decimal("0") <= self.score <= Decimal("1"):
+                raise ValueError("forecast score must be between zero and one")
+        if self.resolution_source_url is not None:
+            parsed = urlparse(self.resolution_source_url)
+            if parsed.scheme != "https" or not parsed.netloc:
+                raise ValueError("resolution source must be an HTTPS URL")
+        evidence = tuple(self.evidence_ids)
+        if any(not item.strip() for item in evidence):
+            raise ValueError("resolution evidence identifiers must be non-empty")
+        object.__setattr__(self, "evidence_ids", evidence)
