@@ -3,7 +3,7 @@
 from alembic import op
 
 
-revision = "0004_market_observation_idempotency"
+revision = "0004_obs_idempotency"
 down_revision = "0003_global_instrument_master"
 branch_labels = None
 depends_on = None
