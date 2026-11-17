@@ -2,7 +2,7 @@
 
 > **Formerly FinTrack.** Aurelius is being developed as an evidence-first financial partner for personal finance, accounting, market research, portfolio analysis, risk assessment, and financial education. The existing FinTrack application is the starting foundation—not a completed Aurelius product.
 
-**Transformation status:** Aurelius planning is merged into `main`; Foundation 0.1 is now in active development on a dedicated feature branch. The first implementation adds a standalone exact-money domain primitive and contract tests. No AI agents, market-data integrations, brokerage connections, or autonomous trading capabilities are implemented yet. Existing FinTrack application workflows and Render resources remain unchanged.
+**Transformation status:** Aurelius planning is merged into `main`; Foundation 0.1 is in active development on a dedicated feature branch. The standalone exact-money domain primitive and contract tests passed GitHub Actions run #125 (backend tests plus frontend tests/build). No AI agents, market-data integrations, brokerage connections, or autonomous trading capabilities are implemented yet. Existing FinTrack application workflows and Render resources remain unchanged.
 
 **Operating principle:** deterministic financial calculations and traceable source data come first; AI interprets and challenges evidence, but never invents facts or silently executes financial actions.
 
@@ -10,7 +10,7 @@
 
 - Repository renamed to `matteojose3112-bit/aurelius`; the legacy FinTrack application and Render resource names are retained until separately reviewed.
 - Aurelius transformation strategy and phased roadmap are merged into `main` through PR #13.
-- Foundation 0.1 work is in progress on `feat/aurelius-foundation-0.1`; this branch adds `Money`, its unit tests, a money contract, and ADR-0001. CI validation is pending.
+- Foundation 0.1 work is in progress on `feat/aurelius-foundation-0.1`; this branch adds `Money`, its unit tests, a money contract, and ADR-0001. GitHub Actions run [#125](https://github.com/matteojose3112-bit/aurelius/actions/runs/44184005586) passed backend compile/migration/pytest checks and frontend tests/build.
 - No database migration, API contract change, frontend money rewrite, Render change, deployment, paid provider, brokerage connection, or production-data write has occurred.
 - See [Money and Currency Contract](docs/finance/MONEY_CONTRACT.md), [ADR-0001](docs/architecture/ADR-0001-financial-core-boundaries.md), and [Foundation 0.1 status](docs/architecture/FOUNDATION_0.1_STATUS.md).
 
