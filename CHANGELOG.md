@@ -382,3 +382,5 @@ All notable project changes are documented here.
 - Domain groundwork only. Instrument master persistence, venue/listing registry, contract specs, market observations, data providers, portfolio holdings, and trading are not yet implemented.
 
 - Expanded representative asset examples to include equities, sovereign debt, ETFs, cryptoassets, real estate, prediction events, liabilities, benchmarks, FX pairs, private equity, and derivatives.
+
+- Added market venue/listing, derivative/futures, bond, and prediction/event contract specification domain types with validation for MICs, IANA timezones, contract lifecycle, coupon terms, resolution sources, and timezone-aware deadlines.
