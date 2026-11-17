@@ -477,6 +477,8 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [x] Add derivative, bond, and prediction contract specification tables.
 - [x] Add provider source/licensing metadata, immutable market observations, forecast records, and separate forecast resolutions.
 - [x] Add exact rational unit/asset seed service and dry-run-by-default CLI.
-- [ ] Validate Alembic 0003 on SQLite and PostgreSQL 16 CI; verify temporal exclusion and append-only guards.
+- [x] Validate Alembic 0003 on SQLite and PostgreSQL 16 CI; verify temporal exclusion and append-only guards.
 - [ ] Add provider adapter contracts and licensed market-data ingestion.
 - [ ] Add holdings, position lots, portfolio valuation, and market risk.
+
+- [x] Validate Alembic 0003 on SQLite and PostgreSQL 16 CI; verify temporal exclusion and append-only guards. Latest run: 31 PostgreSQL integration tests and 125 backend tests passed.
