@@ -151,8 +151,8 @@ class JournalPostingModel(Base):
     __table_args__ = (
         CheckConstraint("side IN ('DEBIT', 'CREDIT')", name="ck_journal_postings_side"),
         CheckConstraint(
-            "amount_minor > 0 AND amount_minor = trunc(amount_minor)",
-            name="ck_journal_postings_positive_integer_minor_units",
+            "amount_minor > 0",
+            name="ck_journal_postings_positive_minor_units",
         ),
         ForeignKeyConstraint(
             ["journal_entry_id", "owner_id", "currency_definition_id"],
