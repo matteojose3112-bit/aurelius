@@ -64,7 +64,8 @@ Last updated: 2026-11-17
 - [x] Add execution-ID replay protection and atomic in-memory validation.
 - [ ] Persist owner-scoped portfolios, immutable trade executions, acquisition lots, and disposal allocations (draft branch: feat/aurelius-foundation-0.6-portfolio-lot-persistence).
 - [ ] Validate Alembic revision 0005 and PostgreSQL append-only/owner-scope constraints in CI.
-- [ ] Implement the PostgreSQL application service with per-position locking, idempotency, deterministic replay, and rollback safety.
+- [x] Implement the PostgreSQL application service with per-position locking, execution-ID idempotency, deterministic replay, and atomic audit/lot writes.
+- [x] Validate service concurrency, rollback, and replay behavior in PostgreSQL 16 CI (run #410: 42 PostgreSQL integration tests passed).
 - [ ] Test oversell races, duplicate execution races, specific-lot isolation, and out-of-order/backdated fill policy.
 - [ ] Define atomic cash-ledger settlement/fee/FX integration before any portfolio trade API.
 - [ ] Add owner-scoped portfolio read APIs only after persistence and concurrency gates pass.

@@ -1,6 +1,6 @@
 # Foundation 0.6 — Portfolio Lot Persistence
 
-**Status:** SQLAlchemy schema and Alembic revision implemented on a draft feature branch; PostgreSQL CI validation is pending.
+**Status:** SQLAlchemy schema, Alembic revision, and PostgreSQL-only atomic execution service implemented on stacked draft branches; GitHub Actions run #410 passed: PostgreSQL 16 integration 42 passed, backend suite passed, and frontend tests/build passed.
 
 ## Scope
 
@@ -37,12 +37,16 @@ Persist the deterministic long-only trade/lot domain introduced in backend/app/d
 
 Alembic revision 0005_portfolio_lots follows 0004_obs_idempotency. It creates the portfolio/execution/lot/allocation/lock tables, adds the composite account-owner uniqueness needed for safe references, and installs PostgreSQL append-only triggers plus finite/range checks for numeric values.
 
-PostgreSQL 16 tests cover exact unscaled decimal persistence, cross-owner account rejection, immutable lot/allocation rows, same-scope disposal references, and mutable lock rows. The CI workflow now includes this test module; the run result must be checked before claiming validation.
+PostgreSQL 16 tests cover exact unscaled decimal persistence, cross-owner account rejection, immutable lot/allocation rows, same-scope disposal references, and mutable lock rows. GitHub Actions run #395 passed: PostgreSQL 16 integration 38 passed, backend suite passed, and frontend tests/build passed. The SQLite and PostgreSQL 16 Alembic upgrades both passed.
+
+## Application service
+
+Implemented in backend/app/persistence/portfolio_lot_service.py. The PostgreSQL-only service serializes duplicate execution IDs with a transaction advisory lock and each position with a row lock. It replays the deterministic domain book, records execution + lot/disposal + audit facts in one transaction, returns same-payload replays, rejects changed-payload reuse, and fails closed on out-of-order fills. A position retains one immutable currency-definition snapshot so later registry releases do not split the holding key.
 
 ## Next implementation gates
 
-1. Implement a PostgreSQL-only application service that serializes each position, replays the deterministic domain book, claims execution IDs idempotently, and writes execution + lot/allocation + audit records atomically.
-2. Test independent-connection oversell races, duplicate execution races, failed-transaction rollback, and specific-lot isolation.
-3. Define late-arriving/backdated fill policy and deterministic rebuild/correction semantics before accepting out-of-order broker imports.
-4. Design atomic cash-ledger integration, including settlement currency, FX legs, commissions, taxes/withholding, and fees.
-5. Add owner-scoped read APIs only after the persistence service and concurrency suite pass.
+1. Add specific-lot persistence tests and explicit failure injection after execution/lot flush.
+2. Define late-arriving/backdated fill rebuild/correction semantics before accepting out-of-order broker imports.
+3. Design atomic cash-ledger integration, including settlement currency, FX legs, commissions, taxes/withholding, and fees.
+4. Refactor the ledger posting service to accept a caller-owned Session so trade and cash journals can commit or roll back together.
+5. Add owner-scoped read APIs only after cash/portfolio atomicity and concurrency tests pass.
