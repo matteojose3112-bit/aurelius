@@ -2,7 +2,7 @@
 
 > **Formerly FinTrack.** Aurelius is being developed as an evidence-first financial partner for personal finance, accounting, market research, portfolio analysis, risk assessment, and financial education. The existing FinTrack application is the starting foundation—not a completed Aurelius product.
 
-**Transformation status:** Aurelius planning is merged into `main`; Foundation 0.1 is in active development on a dedicated feature branch. The standalone exact-money domain primitive and contract tests passed GitHub Actions run #125 (backend tests plus frontend tests/build). No AI agents, market-data integrations, brokerage connections, or autonomous trading capabilities are implemented yet. Existing FinTrack application workflows and Render resources remain unchanged.
+**Transformation status:** Aurelius planning is merged into `main`; Foundation 0.1 and 0.2 are being developed on separate feature branches. Foundation 0.2 now defines immutable financial accounts, balanced single-currency journal entries, asset transfers, append-only reversals, and accounting golden-case tests. GitHub Actions run [#136](https://github.com/matteojose3112-bit/aurelius/actions/runs/44185872151) passed backend and frontend jobs for the Foundation 0.2 head. No API/database integration has been performed. Existing FinTrack application workflows and Render resources remain unchanged.
 
 **Operating principle:** deterministic financial calculations and traceable source data come first; AI interprets and challenges evidence, but never invents facts or silently executes financial actions.
 
@@ -10,9 +10,9 @@
 
 - Repository renamed to `matteojose3112-bit/aurelius`; the legacy FinTrack application and Render resource names are retained until separately reviewed.
 - Aurelius transformation strategy and phased roadmap are merged into `main` through PR #13.
-- Foundation 0.1 work is in progress on `feat/aurelius-foundation-0.1`; this branch adds `Money`, its unit tests, a money contract, and ADR-0001. GitHub Actions run [#125](https://github.com/matteojose3112-bit/aurelius/actions/runs/44184005586) passed backend compile/migration/pytest checks and frontend tests/build.
+- Foundation 0.1 adds the isolated `Money` primitive and contract. Foundation 0.2 work is on `feat/aurelius-foundation-0.2-accounts-ledger`, adding immutable account identities, a double-entry ledger aggregate, transfers, reversals, and golden-case tests. Foundation 0.2 CI run [#136](https://github.com/matteojose3112-bit/aurelius/actions/runs/44185872151) passed backend compile, Alembic SQLite upgrade, pytest, frontend tests, and production build.
 - No database migration, API contract change, frontend money rewrite, Render change, deployment, paid provider, brokerage connection, or production-data write has occurred.
-- See [Money and Currency Contract](docs/finance/MONEY_CONTRACT.md), [ADR-0001](docs/architecture/ADR-0001-financial-core-boundaries.md), and [Foundation 0.1 status](docs/architecture/FOUNDATION_0.1_STATUS.md).
+- See [Money and Currency Contract](docs/finance/MONEY_CONTRACT.md), [Account and Ledger Contract](docs/finance/ACCOUNT_LEDGER_CONTRACT.md), [ADR-0001](docs/architecture/ADR-0001-financial-core-boundaries.md), and [Foundation status](docs/architecture/FOUNDATION_0.1_STATUS.md).
 
 ## Aurelius transformation — assessment baseline
 
@@ -25,7 +25,7 @@
 ### Current limitations to resolve
 - The default `main` branch remains the older FinTrack MVP. The separate integration hardening PR #12 and its component changes remain open draft work; the Aurelius planning merge did not merge or deploy them. Foundation 0.1 is being developed separately.
 - The UI is JavaScript (not TypeScript) and concentrated in a large App.jsx; component boundaries and domain-level state need to improve before the product expands.
-- The current data model has users, transactions, budgets, and goals—not financial accounts, currencies, liabilities, holdings, lots, dividends, trades, benchmarks, or reconciled ledger entries.
+- The legacy application data model has users, transactions, budgets, and goals. Foundation 0.2 now defines domain-only accounts and ledger entries, but these are not yet persisted or exposed through the API; liabilities workflows, holdings, lots, dividends, trades, benchmarks, and reconciliation remain unimplemented.
 - The draft money work uses Numeric(14,2) but currently converts API amounts back to JSON floats. That is not a sufficient multi-currency precision contract. Aurelius must define currency-specific minor-unit precision and an exact API representation before portfolio features.
 - No market-data ingestion, source provenance, freshness tracking, AI orchestration, forecasting, paper-trading engine, scheduled research, or prediction ledger exists.
 - Existing tests are a useful MVP base, but do not constitute browser E2E, provider contract, accounting golden-case, model-evaluation, or production security coverage.
@@ -313,3 +313,8 @@ Integration CI run [#99](https://github.com/matteojose3112-bit/aurelius/actions/
 - Replaced the temporary bootstrap/artifact workflow with standard `npm ci`; removed the workflow's temporary write permission and branch-push logic.
 - Clean-install verification passed in [integration CI run #114](https://github.com/matteojose3112-bit/aurelius/actions/runs/43336240992): `npm ci`, npm audit (zero vulnerabilities), all 6 frontend tests, frontend production build, backend tests, and populated PostgreSQL migration all passed.
 - The frontend build remains split: initial JS 179.05 kB (54.73 kB gzip); dashboard charts 438.31 kB (118.18 kB gzip). Recharts still logs chart-dimension warnings in jsdom, but tests pass.
+
+
+## Foundation 0.2.1 — ledger hardening
+
+The domain-only Foundation 0.2 ledger is now accompanied by a hardening contract covering owner-scoped idempotency, retry-safe duplicate handling, atomic posting and concurrency controls, account closure, effective dating/backdated-entry policy, reconciliation, and correction workflows. See [Ledger Hardening Contract](docs/finance/LEDGER_HARDENING_0.2.1.md). This is a design baseline only: the in-memory ledger is not durable or concurrency-safe, and no persistence/API/migration work has begun. The review also establishes that legacy PRs #10 and #12 retain a two-decimal contract and must not be treated as the canonical multi-currency ledger storage design.
