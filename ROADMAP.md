@@ -23,7 +23,16 @@ Last updated: 2026-11-17
 - [ ] Complete a clean, reviewed integration plan for PRs #3, #4, #5, #7, #9, and #10. PR #12 currently integrates #3/#5/#7/#10, but is not a substitute for reviewing each source PR.
 - [ ] Keep all PRs draft until security, data migration, and deployment gates are satisfied.
 
-### Aurelius Foundation 0.1 — active work\n- [x] Add an infrastructure-independent `Money` value object using Python `Decimal`.\n- [x] Add explicit initial currency exponents for BHD, CAD, COP, EUR, GBP, JPY, KWD, and USD; reject unsupported codes rather than assuming two decimals.\n- [x] Add fixed-scale decimal-string serialization, minor-unit conversion, same-currency arithmetic, and cross-currency rejection.\n- [x] Add deterministic unit tests for scale, rounding, float rejection, invalid values, and FX boundary behavior.\n- [x] Record ADR-0001 for modular-monolith boundaries and read-only AI decision support.\n- [ ] Obtain passing CI on the feature branch and preserve all legacy MVP tests.\n- [ ] Design account/ledger invariants and event correction/reversal rules before persistence changes.\n\n### Financial correctness and data model
+### Aurelius Foundation 0.1 — active work
+- [x] Add an infrastructure-independent `Money` value object using Python `Decimal`.
+- [x] Add explicit initial currency exponents for BHD, CAD, COP, EUR, GBP, JPY, KWD, and USD; reject unsupported codes rather than assuming two decimals.
+- [x] Add fixed-scale decimal-string serialization, minor-unit conversion, same-currency arithmetic, and cross-currency rejection.
+- [x] Add deterministic unit tests for scale, rounding, float rejection, invalid values, and FX boundary behavior.
+- [x] Record ADR-0001 for modular-monolith boundaries and read-only AI decision support.
+- [ ] Obtain passing CI on the feature branch and preserve all legacy MVP tests.
+- [ ] Design account/ledger invariants and event correction/reversal rules before persistence changes.
+
+### Financial correctness and data model
 - [x] Establish the initial documented money contract: currency code, explicit currency scale/minor units, Decimal calculations, ROUND_HALF_UP normalization, and decimal-string serialization policy. See `docs/finance/MONEY_CONTRACT.md`.
 - [ ] Migrate the existing API away from binary-float monetary fields to decimal-string representations; the new domain primitive is not yet wired into legacy endpoints.
 - [ ] Model financial accounts, opening balances, transfers, liabilities, and account ownership before claiming complete net-worth/accounting support.
