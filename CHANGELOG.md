@@ -337,3 +337,15 @@ All notable project changes are documented here.
 
 ### Status
 - Latest full CI run passed: PostgreSQL 16 migration and 16 database integration tests, SQLite backend tests, frontend tests, and frontend build. SQLite migration/test success is not treated as PostgreSQL validation. No hosted database or production environment was used.
+
+
+## Unreleased — Foundation 0.3 atomic posting service — 2026-11-17
+
+### Added
+- Added a transaction-owning PostgreSQL posting service that atomically claims idempotency, locks accounts in sorted UUID order, writes journal/postings/audit, completes the replayable result, and commits once.
+- Added canonical request hashing, same-key/same-payload replay, and changed-payload conflict behavior.
+- Added configured accounting-period checks and exact reversal creation serialized on the source journal.
+- Added service-level exceptions for account ownership/status, currency, idempotency, period, and reversal conflicts.
+
+### Status
+- Service is implemented but not yet connected to API routes. PostgreSQL concurrency/rollback tests are being added before API integration.
