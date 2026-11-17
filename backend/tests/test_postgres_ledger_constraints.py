@@ -35,6 +35,7 @@ from app.persistence.instrument_registry_seed import seed_global_reference_data
 from app.domain.providers import (
     MarketDataRequest,
     ProviderCapabilities,
+    ProviderCoverageError,
     ProviderLicensePolicy,
     ProviderObservation,
 )
@@ -81,7 +82,7 @@ def pg_engine():
         version = int(connection.scalar(text("SHOW server_version_num")))
         assert version >= 160000, "PostgreSQL 16 or newer is required"
     with engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE currency_definitions, unit_definitions, users RESTART IDENTITY CASCADE"))
+        connection.execute(text("TRUNCATE TABLE currency_definitions, unit_definitions, provider_sources, market_venues, forecast_records, users RESTART IDENTITY CASCADE"))
     yield engine
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE TABLE currency_definitions, unit_definitions, users RESTART IDENTITY CASCADE"))
@@ -1343,7 +1344,7 @@ def test_market_data_ingestion_rejects_provider_rows_outside_request(pg_session,
     )
     adapter._observations = (wrong_instrument,)
     factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
-    with pytest.raises(Exception, match="outside the request"):
+    with pytest.raises(ProviderCoverageError, match="outside the request"):
         ingest_market_observations(
             factory,
             source.id,
