@@ -65,8 +65,31 @@ class Money:
             normalized = amount.quantize(quantum, rounding=ROUND_HALF_UP)
         except InvalidOperation as exc:
             raise ValueError("amount exceeds the supported Decimal precision") from exc
+        # Canonicalize signed zero so equivalent zero amounts serialize identically.
+        if normalized.is_zero():
+            normalized = abs(normalized)
         object.__setattr__(self, "amount", normalized)
         object.__setattr__(self, "currency", currency)
+
+    @classmethod
+    def from_minor_units(cls, minor_units: int, currency: str) -> "Money":
+        """Create Money from an exact integer count of currency minor units."""
+        if isinstance(minor_units, bool) or not isinstance(minor_units, int):
+            raise TypeError("minor units must be an integer, never bool or float")
+
+        normalized_currency = currency.upper() if isinstance(currency, str) else ""
+        exponent = cls.CURRENCY_EXPONENTS.get(normalized_currency)
+        if exponent is None:
+            raise ValueError(f"unsupported currency: {normalized_currency}")
+
+        sign = "-" if minor_units < 0 else ""
+        digits = str(abs(minor_units))
+        if exponent:
+            digits = digits.zfill(exponent + 1)
+            amount = f"{sign}{digits[:-exponent]}.{digits[-exponent:]}"
+        else:
+            amount = f"{sign}{digits}"
+        return cls(amount=amount, currency=normalized_currency)
 
     @classmethod
     def from_decimal_string(cls, amount: str, currency: str) -> "Money":
