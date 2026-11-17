@@ -384,3 +384,15 @@ All notable project changes are documented here.
 - Expanded representative asset examples to include equities, sovereign debt, ETFs, cryptoassets, real estate, prediction events, liabilities, benchmarks, FX pairs, private equity, and derivatives.
 
 - Added market venue/listing, derivative/futures, bond, and prediction/event contract specification domain types with validation for MICs, IANA timezones, contract lifecycle, coupon terms, resolution sources, and timezone-aware deadlines.
+
+
+## Unreleased — Foundation 0.4 global instrument persistence — 2026-11-17
+
+### Added
+- Added SQLAlchemy persistence models and Alembic revision 0003 for unit/asset/instrument masters, namespaced identifiers, MIC venues, time-bounded listings, derivative/bond/prediction contract specs, provider source terms, market observations, and forecasts/resolutions.
+- Added PostgreSQL temporal exclusion constraints for overlapping identifier and venue-symbol validity windows.
+- Added append-only protection for global reference data, observations, forecasts, and resolutions.
+- Added exact immutable unit/asset seed service and a dry-run-by-default CLI with explicit production-write guard.
+
+### Status
+- Migration and PostgreSQL validation pending. No provider data, market prices, external subscriptions, broker integrations, production database writes, or trading are included.
