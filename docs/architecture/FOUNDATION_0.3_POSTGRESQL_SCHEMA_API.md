@@ -149,3 +149,22 @@ More exhaustive posting-service tests will cover same-key/same-payload replay, c
 - SQLAlchemy models and Alembic migration are implemented on a draft branch.
 - PostgreSQL 16 CI validation must pass before the posting application service is built.
 - Actual hosted database version, backup/restore, legacy reconciliation, and reversible production migration remain unverified and out of scope.
+
+
+## 11. Atomic posting service implementation
+
+The isolated service in backend/app/persistence/posting_service.py now owns the complete SQLAlchemy Session/transaction for create-journal and reverse-journal commands.
+
+Create-journal flow:
+1. Validate the server-supplied owner/actor, date, currency-definition ID, unique account lines, integer amount bounds, and debit/credit equality.
+2. Canonicalize the request (posting order normalized) and SHA-256 hash it.
+3. Claim (owner, operation, idempotency_key) with PostgreSQL INSERT ... ON CONFLICT DO NOTHING.
+4. If already claimed, lock/read the record: return the stored result for the same hash; raise conflict for a changed hash; fail closed if a committed claim has no result.
+5. Lock all affected accounts in deterministic UUID order and re-check owner, currency definition, and OPEN status.
+6. If the owner has accounting periods configured, require the effective date to fall in an OPEN period; if no periods exist, period enforcement is inactive.
+7. Insert journal header and postings, write audit event, and complete the idempotency result in the same transaction.
+8. Commit once; deferred PostgreSQL constraints are the final authority. Any exception rolls back the idempotency claim and all journal/audit writes.
+
+Reverse-journal flow locks the source journal row, verifies ownership and reversal eligibility, locks its accounts, generates exact inverse lines, writes the reversal and audit event, and completes idempotency in one transaction. Competing reversals serialize on the source journal and the database unique constraint remains the final guard.
+
+The service is not yet exposed through FastAPI. PostgreSQL tests for same-key replay/conflict, competing reversal, failure rollback, close/post races, and retry after unknown commit outcome are the next gate before API integration.
