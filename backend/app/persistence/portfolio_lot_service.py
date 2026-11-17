@@ -216,16 +216,36 @@ def apply_portfolio_execution(
                     raise PortfolioScopeError("brokerage account must be an open asset account")
                 if instrument.status != "ACTIVE":
                     raise PortfolioScopeError("instrument is inactive")
+                # Keep one immutable currency-definition snapshot per position.
+                # A later ISO release must not split one holding into two position keys.
                 currency = session.scalars(
-                    select(CurrencyDefinitionModel).where(
-                        CurrencyDefinitionModel.code == execution.quote_currency_code,
-                        CurrencyDefinitionModel.registry_list == "one",
-                        CurrencyDefinitionModel.withdrawal_key == "",
-                        CurrencyDefinitionModel.fund.is_(False),
-                        CurrencyDefinitionModel.minor_unit_exponent.is_not(None),
+                    select(CurrencyDefinitionModel)
+                    .join(
+                        TradeExecutionModel,
+                        TradeExecutionModel.quote_currency_definition_id
+                        == CurrencyDefinitionModel.id,
                     )
-                    .order_by(CurrencyDefinitionModel.published_on.desc())
+                    .where(
+                        TradeExecutionModel.owner_id == owner_id,
+                        TradeExecutionModel.portfolio_id == execution.portfolio_id,
+                        TradeExecutionModel.account_id == execution.account_id,
+                        TradeExecutionModel.instrument_id == execution.instrument_id,
+                        CurrencyDefinitionModel.code == execution.quote_currency_code,
+                    )
+                    .order_by(TradeExecutionModel.executed_at.asc())
+                    .limit(1)
                 ).first()
+                if currency is None:
+                    currency = session.scalars(
+                        select(CurrencyDefinitionModel).where(
+                            CurrencyDefinitionModel.code == execution.quote_currency_code,
+                            CurrencyDefinitionModel.registry_list == "one",
+                            CurrencyDefinitionModel.withdrawal_key == "",
+                            CurrencyDefinitionModel.fund.is_(False),
+                            CurrencyDefinitionModel.minor_unit_exponent.is_not(None),
+                        )
+                        .order_by(CurrencyDefinitionModel.published_on.desc())
+                    ).first()
                 if currency is None:
                     raise PortfolioScopeError(
                         "quote currency is not an eligible current cash currency"
