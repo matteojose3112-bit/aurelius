@@ -313,3 +313,8 @@ Integration CI run [#99](https://github.com/matteojose3112-bit/aurelius/actions/
 - Replaced the temporary bootstrap/artifact workflow with standard `npm ci`; removed the workflow's temporary write permission and branch-push logic.
 - Clean-install verification passed in [integration CI run #114](https://github.com/matteojose3112-bit/aurelius/actions/runs/43336240992): `npm ci`, npm audit (zero vulnerabilities), all 6 frontend tests, frontend production build, backend tests, and populated PostgreSQL migration all passed.
 - The frontend build remains split: initial JS 179.05 kB (54.73 kB gzip); dashboard charts 438.31 kB (118.18 kB gzip). Recharts still logs chart-dimension warnings in jsdom, but tests pass.
+
+
+## Foundation 0.2.1 — ledger hardening
+
+The domain-only Foundation 0.2 ledger is now accompanied by a hardening contract covering owner-scoped idempotency, retry-safe duplicate handling, atomic posting and concurrency controls, account closure, effective dating/backdated-entry policy, reconciliation, and correction workflows. See [Ledger Hardening Contract](docs/finance/LEDGER_HARDENING_0.2.1.md). This is a design baseline only: the in-memory ledger is not durable or concurrency-safe, and no persistence/API/migration work has begun. The review also establishes that legacy PRs #10 and #12 retain a two-decimal contract and must not be treated as the canonical multi-currency ledger storage design.
