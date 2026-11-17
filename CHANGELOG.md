@@ -1,3 +1,15 @@
+## [Unreleased] — Foundation 0.1 CI validation — 2026-11-17
+
+### Validation
+- GitHub Actions run [#125](https://github.com/matteojose3112-bit/aurelius/actions/runs/44184005586) passed both jobs on `feat/aurelius-foundation-0.1`.
+- Backend job passed dependency installation, Python compile check, Alembic SQLite upgrade, and the complete `backend/tests` pytest suite.
+- Frontend job passed dependency installation, frontend tests, and production build.
+- This validates the current feature-branch baseline only; it does not merge the branch, change production API/database contracts, or authorize deployment.
+
+### Boundaries
+- `Money` remains an isolated domain primitive; legacy API, SQLAlchemy models, migrations, and frontend monetary arithmetic are not yet migrated.
+- No production data, Render infrastructure, secrets, deployment, paid provider, brokerage connection, or money movement changed.
+
 ## [Unreleased] — Aurelius Foundation 0.1 — 2026-11-17
 
 ### Added
