@@ -234,6 +234,7 @@ UNIT_DEFINITIONS = (
     UnitDefinition("token", "token_quantity", "token", "token", 1, 1, 18),
     UnitDefinition("event_share", "event_contract_quantity", "share", "event_share", 1, 1, 8),
     UnitDefinition("square_metre", "area", "m2", "square_metre", 1, 1, 6),
+    UnitDefinition("index_point", "index_points", "pt", "index_point", 1, 1, 8),
     UnitDefinition("bushel", "commodity_specific", "bu", "bushel", None, None, 6, True),
 )
 DEFAULT_UNIT_REGISTRY = UnitRegistry(UNIT_DEFINITIONS)
@@ -255,5 +256,17 @@ ASSET_DEFINITIONS = (
     AssetDefinition("commodity.coffee", "commodity", "agriculture", "Coffee", "pound"),
     AssetDefinition("commodity.cocoa", "commodity", "agriculture", "Cocoa", "metric_tonne"),
     AssetDefinition("commodity.electricity", "commodity", "energy", "Electricity", "mwh"),
+    AssetDefinition("issuer.example_public_company", "equity_issuer", "public_company", "Example public company", "share"),
+    AssetDefinition("fixed_income.sovereign_debt", "fixed_income", "sovereign_bond", "Sovereign debt", "contract"),
+    AssetDefinition("fund.global_equity_etf", "fund", "exchange_traded_fund", "Global equity ETF", "share"),
+    AssetDefinition("crypto.bitcoin", "crypto_asset", "native_coin", "Bitcoin", "token"),
+    AssetDefinition("crypto.ethereum", "crypto_asset", "native_coin", "Ether", "token"),
+    AssetDefinition("real_estate.residential_property", "real_estate", "residential_property", "Residential property", "square_metre"),
+    AssetDefinition("prediction.election_event", "prediction_contract", "binary_event", "Election outcome event", "event_share"),
+    AssetDefinition("liability.mortgage", "liability", "secured_loan", "Mortgage liability", "contract"),
+    AssetDefinition("benchmark.global_equity_index", "benchmark", "equity_index", "Global equity benchmark", "index_point"),
+    AssetDefinition("fx.eur_usd_pair", "fx_pair", "spot_fx_pair", "EUR/USD currency pair", "contract"),
+    AssetDefinition("private_equity.venture_company", "private_equity", "venture_equity", "Private venture company", "share"),
+    AssetDefinition("derivative.interest_rate_swap", "derivative", "interest_rate_swap", "Interest rate swap", "contract"),
 )
 DEFAULT_ASSET_REGISTRY = AssetRegistry(ASSET_DEFINITIONS, DEFAULT_UNIT_REGISTRY)
