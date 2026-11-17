@@ -349,3 +349,8 @@ This is still an isolated implementation branch. SQLite migration/schema tests d
 ## PostgreSQL validation gate — added
 
 A disposable PostgreSQL 16 GitHub Actions service now runs the real Alembic migration and ledger constraint integration tests separately from the SQLite backend suite. The PostgreSQL job exercises deferred balance/reversal triggers, immutable history, fractional-minor-unit rejection, 38-digit bounds, rollback, and concurrent idempotency-key uniqueness. The latest full CI run passed, including the disposable PostgreSQL 16 migration and integration job: **16 PostgreSQL integration tests passed**, alongside the backend suite and frontend tests/build. This validates the current migration and database guards in PostgreSQL 16 CI, not the existing hosted database. No hosted database is involved.
+
+
+## Foundation 0.3 — atomic posting service
+
+The next implementation slice adds an application-level PostgreSQL posting service. It claims idempotency keys and writes journal headers, posting lines, audit events, and the final replayable response in one transaction. It locks affected accounts in deterministic UUID order, validates ownership/currency/status and configured accounting periods, and supports exact reversals serialized on the source journal. Same-key/same-payload requests replay the stored response; changed payloads conflict. This service is not connected to FastAPI routes yet. See backend/app/persistence/posting_service.py.
