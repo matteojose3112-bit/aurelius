@@ -195,11 +195,13 @@ class ProviderRegistry:
                 continue
             if request.instrument_type and request.instrument_type not in capabilities.instrument_types:
                 continue
-            if request.region_code and capabilities.region_codes:
-                if request.region_code not in capabilities.region_codes:
-                    continue
-            if request.venue_mic and capabilities.venue_mics:
-                if request.venue_mic not in capabilities.venue_mics:
-                    continue
+            if request.region_code and request.region_code not in capabilities.region_codes:
+                continue
+            if request.venue_mic and request.venue_mic not in capabilities.venue_mics:
+                continue
+            if request.granularity == "realtime" and not capabilities.supports_realtime:
+                continue
+            if request.granularity == "intraday" and not capabilities.supports_intraday:
+                continue
             supported.append(adapter)
         return tuple(sorted(supported, key=lambda item: item.capabilities.provider_key))
