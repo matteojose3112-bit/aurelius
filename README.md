@@ -357,3 +357,6 @@ The next implementation slice adds an application-level PostgreSQL posting servi
 
 The latest full CI run passed with **25 PostgreSQL 16 integration tests**, the SQLite backend suite (including posting-command validation), and frontend tests/build. PostgreSQL coverage includes concurrent same-key replay, competing reversals, account-close/post serialization, failure injection after posting rows are flushed, and atomic rollback. The service remains unexposed to API routes pending review of its transaction contract.
 
+
+
+The posting service also performs up to three bounded retries for PostgreSQL serialization failures, deadlocks, and connection failures, always reusing the same idempotency key. This makes retry after an unknown commit outcome safe: a retry either replays the committed result or executes after the original transaction rolled back.
