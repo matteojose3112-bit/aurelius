@@ -11,6 +11,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, text, text
 from sqlalchemy.orm import Session
 
+from .api.ledger import router as aurelius_ledger_router
 from .auth import create_access_token, get_current_user, hash_password, verify_password
 from .database import get_db
 from .models import Budget, Goal, Transaction, User
@@ -27,6 +28,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(aurelius_ledger_router)
 
 
 def month_range(year: int, month: int):
