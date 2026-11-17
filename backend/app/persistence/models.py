@@ -185,7 +185,7 @@ class JournalPostingModel(Base):
     account_id: Mapped[object] = mapped_column(Uuid(as_uuid=True), nullable=False)
     currency_definition_id: Mapped[object] = mapped_column(Uuid(as_uuid=True), nullable=False)
     side: Mapped[str] = mapped_column(String(8), nullable=False)
-    amount_minor: Mapped[object] = mapped_column(Numeric(38, 0, asdecimal=True), nullable=False)
+    amount_minor: Mapped[object] = mapped_column(Numeric(asdecimal=True), nullable=False)
     created_at: Mapped[object] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
