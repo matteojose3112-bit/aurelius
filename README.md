@@ -405,3 +405,10 @@ No market prices, provider subscriptions, broker access, listings, or futures ex
 
 
 PostgreSQL 16 CI validates the instrument-master migration, temporal exclusion constraints, append-only guards, reference seeding, derivative/bond/prediction specifications, market observations, and forecast resolution. Latest validated run: **31 PostgreSQL integration tests passed; 125 backend tests passed** (31 PostgreSQL-only cases are skipped in the SQLite backend job). Frontend tests/build also pass.
+
+
+## Foundation 0.5 — provider adapter framework
+
+Aurelius now has provider-neutral contracts for global market/reference data, explicit coverage declarations, license policies, exact Decimal observations, and a PostgreSQL ingestion service. Ingestion checks provider identity/terms, purpose, geographic rights, instrument/type/time coverage, unit/currency references, and deduplicates immutable observations by provider record identity. Fetching occurs outside the database transaction; persistence is atomic.
+
+No live provider, API key, paid subscription, or market feed is configured. Provider-specific adapters will be added only after coverage and licensing are verified. See docs/architecture/FOUNDATION_0.5_PROVIDER_ADAPTER_FRAMEWORK.md.
