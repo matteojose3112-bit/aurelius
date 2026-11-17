@@ -75,8 +75,9 @@ class ForecastRecord:
         if any(not item.strip() for item in evidence):
             raise ValueError("forecast evidence identifiers must be non-empty")
         object.__setattr__(self, "evidence_ids", evidence)
-        if self.resolved_outcome is not None:
-            if not self.resolved_outcome.strip() or self.resolved_at is None:
-                raise ValueError("resolved forecasts require an outcome and resolved_at")
+        if (self.resolved_outcome is None) != (self.resolved_at is None):
+            raise ValueError("resolved forecasts require both an outcome and resolved_at")
+        if self.resolved_outcome is not None and not self.resolved_outcome.strip():
+            raise ValueError("resolved forecast outcome must be non-empty")
         if self.resolved_at is not None and self.resolved_at.tzinfo is None:
             raise ValueError("resolved_at must be timezone-aware")
