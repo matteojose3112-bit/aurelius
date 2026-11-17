@@ -327,3 +327,13 @@ All notable project changes are documented here.
 
 ### Status
 - Implementation is isolated on a draft feature branch. CI validation is pending. PostgreSQL concurrency behavior remains unverified until the disposable PostgreSQL 16 test job is added. No hosted database, API, Render configuration, production data, or deployment changed.
+
+
+## Unreleased — Foundation 0.3 PostgreSQL integration validation — 2026-11-17
+
+### Added
+- Added a disposable PostgreSQL 16 service and a dedicated CI job that applies Alembic migrations and runs real database constraint/concurrency tests.
+- Added PostgreSQL checks for exact integral minor units, 38-digit posting bounds, deferred journal balancing, reversal symmetry, closed-account rules, append-only records, transaction rollback, and concurrent idempotency-key uniqueness.
+
+### Status
+- First PostgreSQL CI run is pending. SQLite migration/test success is not treated as PostgreSQL validation. No hosted database or production environment was used.
