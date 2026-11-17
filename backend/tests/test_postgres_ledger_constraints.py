@@ -32,6 +32,19 @@ from app.persistence.instrument_models import (
     UnitDefinitionModel,
 )
 from app.persistence.instrument_registry_seed import seed_global_reference_data
+from app.domain.providers import (
+    MarketDataRequest,
+    ProviderCapabilities,
+    ProviderCoverageError,
+    ProviderLicensePolicy,
+    ProviderObservation,
+)
+from app.persistence.market_data_ingestion import (
+    ProviderLicenseError,
+    ingest_market_observations,
+)
+from app.providers.ecb_reference_fx import ECBReferenceFXAdapter, ECBSeriesMapping
+import httpx
 from app.persistence.models import (
     AccountingPeriodModel,
     AuditEventModel,
@@ -71,7 +84,7 @@ def pg_engine():
         version = int(connection.scalar(text("SHOW server_version_num")))
         assert version >= 160000, "PostgreSQL 16 or newer is required"
     with engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE currency_definitions, unit_definitions, users RESTART IDENTITY CASCADE"))
+        connection.execute(text("TRUNCATE TABLE currency_definitions, unit_definitions, provider_sources, market_venues, forecast_records, users RESTART IDENTITY CASCADE"))
     yield engine
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE TABLE currency_definitions, unit_definitions, users RESTART IDENTITY CASCADE"))
@@ -1189,3 +1202,246 @@ def test_postgres_bond_and_prediction_minor_units_reject_fractional_values(pg_se
     with pytest.raises(IntegrityError, match="ck_prediction_payout_integral_minor"):
         pg_session.commit()
     pg_session.rollback()
+
+
+
+class FixtureMarketProvider:
+    def __init__(self, capabilities, observations):
+        self._capabilities = capabilities
+        self._observations = tuple(observations)
+        self.fetch_count = 0
+
+    @property
+    def capabilities(self):
+        return self._capabilities
+
+    def fetch(self, request):
+        self.fetch_count += 1
+        return self._observations
+
+
+def make_market_provider_fixture(pg_session):
+    seed_global_reference_data(pg_session)
+    seed_currency_registry(pg_session)
+    usd = pg_session.scalars(
+        select(CurrencyDefinitionModel).where(
+            CurrencyDefinitionModel.code == "USD",
+            CurrencyDefinitionModel.registry_list == "one",
+        )
+    ).one()
+    instrument = InstrumentDefinitionModel(
+        id=uuid4(),
+        instrument_type="future",
+        name="Synthetic commodity future",
+        underlying_asset_id="commodity.wti_crude_oil",
+        quote_currency_definition_id=usd.id,
+        source_id="fixture",
+    )
+    source = ProviderSourceModel(
+        id=uuid4(),
+        provider_key="fixture_market_provider",
+        name="Fixture Market Provider",
+        category="market_data",
+        terms_version="terms-2026-01",
+        rights_scope="internal_research",
+        geographic_coverage=["US"],
+        status="ACTIVE",
+    )
+    pg_session.add_all([instrument, source])
+    pg_session.commit()
+
+    observed = datetime(2026, 11, 17, 14, 0, tzinfo=timezone.utc)
+    capabilities = ProviderCapabilities(
+        provider_key="fixture_market_provider",
+        data_types=("last_price",),
+        asset_classes=("commodity",),
+        instrument_types=("future",),
+        region_codes=("US",),
+        venue_mics=("Z999",),
+        delay_class="delayed",
+        supports_historical=True,
+        rights_scope="internal_research",
+    )
+    request = MarketDataRequest(
+        instrument_ids=(instrument.id,),
+        observation_types=("last_price",),
+        start_at=observed - timedelta(hours=1),
+        end_at=observed + timedelta(hours=1),
+        asset_class="commodity",
+        instrument_type="future",
+        region_code="US",
+        venue_mic="Z999",
+        granularity="daily",
+    )
+    observation = ProviderObservation(
+        source_record_id="fixture-row-0001",
+        instrument_id=instrument.id,
+        observation_type="last_price",
+        value=Decimal("72.25"),
+        observed_at=observed,
+        retrieved_at=observed + timedelta(seconds=2),
+        unit_code="barrel",
+        quote_currency_code="USD",
+        market_session="regular",
+        methodology="fixture-only",
+    )
+    adapter = FixtureMarketProvider(capabilities, (observation,))
+    policy = ProviderLicensePolicy(
+        provider_key="fixture_market_provider",
+        terms_version="terms-2026-01",
+        allowed_purposes=("internal_research",),
+        allowed_regions=("US",),
+        attribution_required=True,
+        redistribution_allowed=False,
+    )
+    return source, adapter, request, policy
+
+
+def test_market_data_ingestion_is_license_aware_and_idempotent(pg_session, pg_engine):
+    source, adapter, request, policy = make_market_provider_fixture(pg_session)
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+
+    first = ingest_market_observations(
+        factory, source.id, adapter, request, policy, purpose="internal_research"
+    )
+    second = ingest_market_observations(
+        factory, source.id, adapter, request, policy, purpose="internal_research"
+    )
+
+    assert (first.received, first.inserted, first.duplicates) == (1, 1, 0)
+    assert (second.received, second.inserted, second.duplicates) == (1, 0, 1)
+    assert adapter.fetch_count == 2
+    assert pg_session.scalar(
+        select(func.count()).select_from(MarketObservationModel)
+    ) == 1
+
+
+def test_market_data_ingestion_rejects_unlicensed_purpose_before_fetch(pg_session, pg_engine):
+    source, adapter, request, policy = make_market_provider_fixture(pg_session)
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    with pytest.raises(ProviderLicenseError, match="purpose is not permitted"):
+        ingest_market_observations(
+            factory,
+            source.id,
+            adapter,
+            request,
+            policy,
+            purpose="redistribution",
+        )
+    assert adapter.fetch_count == 0
+    assert pg_session.scalar(
+        select(func.count()).select_from(MarketObservationModel)
+    ) == 0
+
+
+def test_market_data_ingestion_rejects_provider_rows_outside_request(pg_session, pg_engine):
+    source, adapter, request, policy = make_market_provider_fixture(pg_session)
+    wrong_instrument = ProviderObservation(
+        source_record_id="wrong-instrument-row",
+        instrument_id=uuid4(),
+        observation_type="last_price",
+        value=Decimal("1"),
+        observed_at=request.start_at,
+        retrieved_at=request.start_at,
+    )
+    adapter._observations = (wrong_instrument,)
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    with pytest.raises(ProviderCoverageError, match="outside the request"):
+        ingest_market_observations(
+            factory,
+            source.id,
+            adapter,
+            request,
+            policy,
+            purpose="internal_research",
+        )
+    assert pg_session.scalar(
+        select(func.count()).select_from(MarketObservationModel)
+    ) == 0
+
+
+
+def test_ecb_adapter_to_postgres_ingestion_is_exact_attributed_and_idempotent(
+    pg_session, pg_engine
+):
+    seed_global_reference_data(pg_session)
+    seed_currency_registry(pg_session)
+    usd = pg_session.scalars(
+        select(CurrencyDefinitionModel).where(
+            CurrencyDefinitionModel.code == "USD",
+            CurrencyDefinitionModel.registry_list == "one",
+        )
+    ).one()
+    instrument = InstrumentDefinitionModel(
+        id=uuid4(),
+        instrument_type="spot_fx_pair",
+        name="EUR/USD ECB daily reference rate",
+        underlying_asset_id="fx.eur_usd_pair",
+        quote_currency_definition_id=usd.id,
+        source_id="ecb-reference-series-mapping",
+    )
+    source = ProviderSourceModel(
+        id=uuid4(),
+        provider_key="ecb_data_portal",
+        name="European Central Bank Data Portal",
+        category="fx_reference",
+        website_url="https://data.ecb.europa.eu/",
+        license_name="ESCB statistics reuse policy",
+        license_url="https://www.ecb.europa.eu/stats/ecb_statistics/governance_and_quality_framework/html/usage_policy.en.html",
+        terms_version="ecb-escb-reuse-2026-11-17",
+        rights_scope="internal_research",
+        geographic_coverage={"global": True},
+        status="ACTIVE",
+    )
+    pg_session.add_all([instrument, source])
+    pg_session.commit()
+
+    csv_data = """KEY,FREQ,CURRENCY,CURRENCY_DENOM,EXR_TYPE,EXR_SUFFIX,TIME_PERIOD,OBS_VALUE
+D.USD.EUR.SP00.A,D,USD,EUR,SP00,A,2026-11-16,1.1580
+D.USD.EUR.SP00.A,D,USD,EUR,SP00,A,2026-11-17,1.1605
+"""
+    client = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, text=csv_data)
+        )
+    )
+    adapter = ECBReferenceFXAdapter(
+        (ECBSeriesMapping(instrument.id, "USD"),), client=client
+    )
+    start = datetime(2026, 11, 16, tzinfo=timezone.utc)
+    request = MarketDataRequest(
+        instrument_ids=(instrument.id,),
+        observation_types=("reference_rate",),
+        start_at=start,
+        end_at=datetime(2026, 11, 17, 23, 59, tzinfo=timezone.utc),
+        asset_class="fx_pair",
+        instrument_type="spot_fx_pair",
+        granularity="daily",
+    )
+    policy = ProviderLicensePolicy(
+        provider_key="ecb_data_portal",
+        terms_version="ecb-escb-reuse-2026-11-17",
+        allowed_purposes=("internal_research",),
+        global_region_coverage=True,
+        attribution_required=True,
+        redistribution_allowed=False,
+    )
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    try:
+        first = ingest_market_observations(
+            factory, source.id, adapter, request, policy, purpose="internal_research"
+        )
+        second = ingest_market_observations(
+            factory, source.id, adapter, request, policy, purpose="internal_research"
+        )
+    finally:
+        client.close()
+
+    assert (first.received, first.inserted, first.duplicates) == (2, 2, 0)
+    assert (second.received, second.inserted, second.duplicates) == (2, 0, 2)
+    rows = pg_session.scalars(
+        select(MarketObservationModel).order_by(MarketObservationModel.observed_at)
+    ).all()
+    assert [row.value for row in rows] == [Decimal("1.1580"), Decimal("1.1605")]
+    assert all(row.license_reference == policy.terms_version for row in rows)
+    assert all(row.quote_currency_definition_id == usd.id for row in rows)
