@@ -1,6 +1,6 @@
 # Foundation 0.6 — Portfolio Lot Persistence
 
-**Status:** SQLAlchemy schema and Alembic revision implemented on a draft feature branch; PostgreSQL CI validation is pending.
+**Status:** SQLAlchemy schema, Alembic revision, and PostgreSQL-only atomic execution service implemented on stacked draft branches; current service/concurrency CI validation is pending.
 
 ## Scope
 
@@ -39,10 +39,14 @@ Alembic revision 0005_portfolio_lots follows 0004_obs_idempotency. It creates th
 
 PostgreSQL 16 tests cover exact unscaled decimal persistence, cross-owner account rejection, immutable lot/allocation rows, same-scope disposal references, and mutable lock rows. The CI workflow now includes this test module; the run result must be checked before claiming validation.
 
+## Application service
+
+Implemented in backend/app/persistence/portfolio_lot_service.py. The PostgreSQL-only service serializes duplicate execution IDs with a transaction advisory lock and each position with a row lock. It replays the deterministic domain book, records execution + lot/disposal + audit facts in one transaction, returns same-payload replays, rejects changed-payload reuse, and fails closed on out-of-order fills. A position retains one immutable currency-definition snapshot so later registry releases do not split the holding key.
+
 ## Next implementation gates
 
-1. Implement a PostgreSQL-only application service that serializes each position, replays the deterministic domain book, claims execution IDs idempotently, and writes execution + lot/allocation + audit records atomically.
-2. Test independent-connection oversell races, duplicate execution races, failed-transaction rollback, and specific-lot isolation.
-3. Define late-arriving/backdated fill policy and deterministic rebuild/correction semantics before accepting out-of-order broker imports.
+1. Validate the service against PostgreSQL 16 CI, including independent-connection oversell races, duplicate execution races, and rollback.
+2. Add specific-lot persistence tests and explicit failure injection after execution/lot flush.
+3. Define late-arriving/backdated fill rebuild/correction semantics before accepting out-of-order broker imports.
 4. Design atomic cash-ledger integration, including settlement currency, FX legs, commissions, taxes/withholding, and fees.
 5. Add owner-scoped read APIs only after the persistence service and concurrency suite pass.
