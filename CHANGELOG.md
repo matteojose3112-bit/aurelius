@@ -384,3 +384,5 @@ All notable project changes are documented here.
 - Expanded representative asset examples to include equities, sovereign debt, ETFs, cryptoassets, real estate, prediction events, liabilities, benchmarks, FX pairs, private equity, and derivatives.
 
 - Added market venue/listing, derivative/futures, bond, and prediction/event contract specification domain types with validation for MICs, IANA timezones, contract lifecycle, coupon terms, resolution sources, and timezone-aware deadlines.
+
+- Added immutable market-observation and forecast domain records with exact Decimal values, source/timestamp provenance, model/version, probability bounds, horizon, evidence, and resolution lifecycle validation.
