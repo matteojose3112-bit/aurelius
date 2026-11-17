@@ -39,7 +39,10 @@ class Money:
         currency = self.currency.upper() if isinstance(self.currency, str) else ""
         if not _CURRENCY_PATTERN.fullmatch(currency):
             raise ValueError("currency must be a three-letter uppercase currency code")
-        definition = DEFAULT_CURRENCY_REGISTRY.get_money_unit(currency)
+        try:
+            definition = DEFAULT_CURRENCY_REGISTRY.get_money_unit(currency)
+        except ValueError as exc:
+            raise ValueError(f"unsupported currency: {currency}") from exc
         exponent = definition.minor_unit_exponent
         assert exponent is not None
 
