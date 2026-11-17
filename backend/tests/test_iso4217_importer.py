@@ -1,4 +1,4 @@
-from app.scripts.update_iso4217_snapshot import build_snapshot, parse_current, parse_historical
+from scripts.update_iso4217_snapshot import build_snapshot, parse_current, parse_historical
 
 
 LIST_ONE = b"""<?xml version="1.0"?>
