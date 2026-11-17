@@ -322,12 +322,22 @@ def _journal_response(
     }
 
 
-def _post_journal_once(
-    session_factory: Callable[[], Session],
+def post_journal_in_session(
+    session: Session,
     command: PostJournalCommand,
     idempotency_key: str,
 ) -> PostingResult:
-    """Atomically claim, validate, post, audit, and complete one journal."""
+    """Post a journal inside a caller-owned transaction.
+
+    The caller must have an active transaction and remains responsible for
+    commit/rollback. This function never opens, commits, rolls back, closes,
+    or retries the Session. It is the composition boundary for workflows
+    (such as trade settlement) that must persist ledger and domain facts
+    atomically in one database transaction.
+    """
+    if not session.in_transaction():
+        raise RuntimeError("post_journal_in_session requires an active transaction")
+
     key = _validate_idempotency_key(idempotency_key)
     canonical_lines = sorted(
         command.postings,
@@ -350,77 +360,86 @@ def _post_journal_once(
         }
     )
 
+    record, replay = _claim_idempotency(
+        session, command.owner_id, CREATE_OPERATION, key, request_hash
+    )
+    if replay is not None:
+        return replay
+
+    assert record is not None
+    currency = _currency_definition(session, command.currency_definition_id)
+    _lock_and_validate_accounts(
+        session,
+        command.owner_id,
+        command.currency_definition_id,
+        [line.account_id for line in command.postings],
+    )
+    _check_period(session, command.owner_id, command.effective_date)
+
+    journal = JournalEntryModel(
+        id=uuid4(),
+        owner_id=command.owner_id,
+        effective_date=command.effective_date,
+        description=command.description,
+        currency_definition_id=command.currency_definition_id,
+        status="POSTED",
+        created_by=command.actor_id,
+    )
+    session.add(journal)
+    session.flush()
+
+    normalized_lines = [
+        (line.account_id, line.side, line.amount_minor)
+        for line in canonical_lines
+    ]
+    session.add_all(
+        [
+            JournalPostingModel(
+                id=uuid4(),
+                journal_entry_id=journal.id,
+                owner_id=command.owner_id,
+                account_id=account_id,
+                currency_definition_id=command.currency_definition_id,
+                side=side,
+                amount_minor=Decimal(amount_minor),
+            )
+            for account_id, side, amount_minor in normalized_lines
+        ]
+    )
+    session.flush()
+    session.refresh(journal)
+    body = _journal_response(journal, currency, normalized_lines)
+    session.add(
+        AuditEventModel(
+            id=uuid4(),
+            owner_id=command.owner_id,
+            actor_id=command.actor_id,
+            event_type="ledger.journal.posted",
+            aggregate_type="journal_entry",
+            aggregate_id=journal.id,
+            payload={
+                "currency_code": currency.code,
+                "registry_release": currency.registry_release,
+                "posting_count": len(normalized_lines),
+                "effective_date": command.effective_date.isoformat(),
+            },
+            correlation_id=record.id,
+        )
+    )
+    _complete_idempotency(record, journal, 201, body)
+    session.flush()
+    return PostingResult(status_code=201, body=body, replayed=False)
+
+
+def _post_journal_once(
+    session_factory: Callable[[], Session],
+    command: PostJournalCommand,
+    idempotency_key: str,
+) -> PostingResult:
+    """Standalone transaction-owning wrapper around the session-bound primitive."""
     with session_factory() as session:
         with session.begin():
-            record, replay = _claim_idempotency(
-                session, command.owner_id, CREATE_OPERATION, key, request_hash
-            )
-            if replay is not None:
-                result = replay
-            else:
-                assert record is not None
-                currency = _currency_definition(session, command.currency_definition_id)
-                _lock_and_validate_accounts(
-                    session,
-                    command.owner_id,
-                    command.currency_definition_id,
-                    [line.account_id for line in command.postings],
-                )
-                _check_period(session, command.owner_id, command.effective_date)
-
-                journal = JournalEntryModel(
-                    id=uuid4(),
-                    owner_id=command.owner_id,
-                    effective_date=command.effective_date,
-                    description=command.description,
-                    currency_definition_id=command.currency_definition_id,
-                    status="POSTED",
-                    created_by=command.actor_id,
-                )
-                session.add(journal)
-                session.flush()
-
-                normalized_lines = [
-                    (line.account_id, line.side, line.amount_minor)
-                    for line in canonical_lines
-                ]
-                session.add_all(
-                    [
-                        JournalPostingModel(
-                            id=uuid4(),
-                            journal_entry_id=journal.id,
-                            owner_id=command.owner_id,
-                            account_id=account_id,
-                            currency_definition_id=command.currency_definition_id,
-                            side=side,
-                            amount_minor=Decimal(amount_minor),
-                        )
-                        for account_id, side, amount_minor in normalized_lines
-                    ]
-                )
-                session.flush()
-                session.refresh(journal)
-                body = _journal_response(journal, currency, normalized_lines)
-                session.add(
-                    AuditEventModel(
-                        id=uuid4(),
-                        owner_id=command.owner_id,
-                        actor_id=command.actor_id,
-                        event_type="ledger.journal.posted",
-                        aggregate_type="journal_entry",
-                        aggregate_id=journal.id,
-                        payload={
-                            "currency_code": currency.code,
-                            "registry_release": currency.registry_release,
-                            "posting_count": len(normalized_lines),
-                            "effective_date": command.effective_date.isoformat(),
-                        },
-                        correlation_id=record.id,
-                    )
-                )
-                _complete_idempotency(record, journal, 201, body)
-                session.flush()
-                result = PostingResult(status_code=201, body=body, replayed=False)
+            result = post_journal_in_session(session, command, idempotency_key)
     return result
 
 
