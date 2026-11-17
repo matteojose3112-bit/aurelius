@@ -13,20 +13,9 @@
 
 ## 2. Currency scale
 
-Currency scale is a property of the currency, not a universal two-decimal assumption. The initial domain registry explicitly supports:
+Currency scale is a property of the currency or monetary unit, not a universal two-decimal assumption. The current registry is generated from the versioned SIX ISO 4217 List One and List Three sources. The bundled current release has 178 codes, including 165 with a published minor-unit exponent. Supported precision includes zero, two, three, and four decimal places (for example JPY, USD, KWD, and CLF).
 
-| Currency | Exponent | Example fixed-scale amount |
-| --- | ---: | ---: |
-| BHD | 3 | 1.234 |
-| CAD | 2 | 1.23 |
-| COP | 2 | 1.23 |
-| EUR | 2 | 1.23 |
-| GBP | 2 | 1.23 |
-| JPY | 0 | 123 |
-| KWD | 3 | 1.234 |
-| USD | 2 | 1.23 |
-
-The registry is source-versioned. Unknown codes and codes without a published exponent fail closed; do not silently assume two decimals. Registry updates require reviewed source snapshots and regression tests.
+Unknown codes and codes without a published exponent fail closed; do not silently assume two decimals. Registry updates require reviewed source snapshots and regression tests. Historical List Three entries are retained, but their exponent is not inferred when the source does not publish it.
 
 ## 2.1 Versioned ISO 4217 reference data
 
