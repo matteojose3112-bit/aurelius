@@ -403,11 +403,6 @@ class ForecastRecordModel(Base):
             "horizon_end >= generated_at",
             name="ck_forecast_records_horizon_after_generation",
         ),
-        CheckConstraint(
-            "(resolved_outcome IS NULL AND resolved_at IS NULL) OR "
-            "(resolved_outcome IS NOT NULL AND resolved_at IS NOT NULL)",
-            name="ck_forecast_records_resolution_pair",
-        ),
         Index("ix_forecast_records_target_horizon", "target_id", "horizon_end"),
     )
 
@@ -419,6 +414,28 @@ class ForecastRecordModel(Base):
     generated_at: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
     horizon_end: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
     evidence_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    resolved_outcome: Mapped[str | None] = mapped_column(String(240), nullable=True)
-    resolved_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    scoring_method: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[object] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ForecastResolutionModel(Base):
+    __tablename__ = "forecast_resolutions"
+    __table_args__ = (
+        CheckConstraint(
+            "score IS NULL OR (score >= 0 AND score <= 1)",
+            name="ck_forecast_resolutions_score_range",
+        ),
+    )
+
+    forecast_id: Mapped[object] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("forecast_records.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    resolved_outcome: Mapped[str] = mapped_column(String(240), nullable=False)
+    resolved_at: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
+    scoring_method: Mapped[str] = mapped_column(String(64), nullable=False)
+    score: Mapped[object | None] = mapped_column(Numeric(asdecimal=True), nullable=True)
+    resolution_source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    evidence_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
