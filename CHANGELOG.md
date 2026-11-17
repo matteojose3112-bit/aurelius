@@ -412,5 +412,10 @@ All notable project changes are documented here.
 - Added a unique provider-observation deduplication index and Alembic revision 0004.
 - Added fake-provider tests for capability matching, licensing, out-of-request rows, and idempotent replay.
 
+
+
+### Validation
+- PostgreSQL 16 integration: 34 passed. Backend suite: 134 passed, with PostgreSQL-only cases skipped in SQLite mode. Frontend tests and build passed on the validated provider-framework head.
+
 ### Status
-- No live provider adapters, credentials, paid subscriptions, external data fetches, or production data writes are included. CI validation pending.
+- Provider-neutral contracts and licensed ingestion are implemented and CI-validated. No live provider adapter, external network fetch, API key, subscription, production source, or production data write was configured.
