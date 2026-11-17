@@ -76,3 +76,7 @@ Provider rate limiting, backoff, circuit breakers, API secrets, raw payload rete
 ## Tests
 
 Fake adapters validate capability matching, explicit global/regional coverage, exact Decimal observations, license-purpose rejection before network fetch, source/terms matching, and idempotent PostgreSQL insertion. Tests do not call external providers.
+
+## Implementation status
+
+Implemented in backend/app/domain/providers.py and backend/app/persistence/market_data_ingestion.py. Alembic revision 0004 adds the provider-observation deduplication index. Fake-provider PostgreSQL integration tests verify exact Decimal ingestion, license/purpose/region checks, provider source/terms identity, and duplicate replay. Latest CI: 34 PostgreSQL integration tests and 134 backend tests passed. No live provider has been connected.
