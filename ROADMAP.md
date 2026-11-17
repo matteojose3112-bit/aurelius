@@ -373,3 +373,27 @@ References: [Global Markets Architecture](docs/architecture/FOUNDATION_0.3_GLOBA
 - [ ] Add an extensible asset/instrument master for commodities, securities, derivatives, crypto, prediction contracts, real assets, liabilities, and benchmarks.
 
 Coverage design: [Global Asset Coverage](docs/architecture/FOUNDATION_0.3_GLOBAL_ASSET_COVERAGE.md). Registry code: `backend/app/domain/currency.py`; snapshot: `backend/app/domain/data/iso4217_snapshot.json`; updater: `backend/scripts/update_iso4217_snapshot.py`.
+
+
+## Foundation 0.3 — persistence model and migration implementation
+
+- [x] Define SQLAlchemy models for immutable currency definitions, financial accounts, journals, postings, idempotency, audit, periods, and international owner preferences.
+- [x] Keep authenticated owner IDs as INTEGER references to users.id; use UUID IDs for ledger aggregates.
+- [x] Add composite foreign keys that enforce journal/account owner and currency-definition consistency.
+- [x] Add an idempotent registry seed service that never updates or deletes published reference rows.
+- [x] Add Alembic migration for the ledger persistence schema.
+- [x] Add PostgreSQL-only deferred journal-balance/reversal triggers, append-only guards, account-identity protection, and period-overlap exclusion.
+- [ ] Validate the migration and model/seed tests in CI.
+- [ ] Add PostgreSQL 16 service and integration tests for deferred triggers, direct-write bypass resistance, concurrent idempotency/reversal, rollback, and locking.
+- [ ] Implement atomic posting transaction service after PostgreSQL behavior is proven.
+
+Implementation branch: feat/aurelius-foundation-0.3-ledger-persistence-models. No hosted database migration or API integration is included.
+
+
+## Foundation 0.3 — PostgreSQL validation
+
+- [x] Add a disposable PostgreSQL 16 service to GitHub Actions.
+- [x] Run the real Alembic migration against PostgreSQL 16 in CI.
+- [x] Add PostgreSQL integration tests for balanced/unbalanced journals, reversal symmetry, closed accounts, append-only protection, fractional precision, 38-digit bounds, rollback, and concurrent idempotency uniqueness.
+- [x] Latest full CI run passed: PostgreSQL 16 migration + 16 integration tests, SQLite backend suite, frontend tests, and frontend build.
+- [ ] Expand concurrency coverage to posting-service replay/conflict semantics, competing reversals, account close/post races, and timeout-after-commit retry.
