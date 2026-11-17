@@ -318,3 +318,10 @@ Integration CI run [#99](https://github.com/matteojose3112-bit/aurelius/actions/
 ## Foundation 0.2.1 — ledger hardening
 
 The domain-only Foundation 0.2 ledger is now accompanied by a hardening contract covering owner-scoped idempotency, retry-safe duplicate handling, atomic posting and concurrency controls, account closure, effective dating/backdated-entry policy, reconciliation, and correction workflows. See [Ledger Hardening Contract](docs/finance/LEDGER_HARDENING_0.2.1.md). This is a design baseline only: the in-memory ledger is not durable or concurrency-safe, and no persistence/API/migration work has begun. The review also establishes that legacy PRs #10 and #12 retain a two-decimal contract and must not be treated as the canonical multi-currency ledger storage design.
+
+
+## Foundation 0.3 — Persistence Architecture (proposed)
+
+Foundation 0.3 now has a proposed exact-money persistence decision and PostgreSQL schema/API design. Canonical posting magnitudes use integer minor units stored as bounded `NUMERIC(38,0)`, with immutable currency exponent/version snapshots; this avoids binary floats and the narrower `BIGINT` ceiling. The schema design covers accounts, journal entries, postings, idempotency, audit events, and accounting periods, including deferred cross-row balance enforcement, append-only protections, and atomic retry-safe posting. See [ADR-003](docs/architecture/ADR-003-canonical-money-storage.md), [PostgreSQL Schema/API](docs/architecture/FOUNDATION_0.3_POSTGRESQL_SCHEMA_API.md), and the [Persistence Test Plan](docs/architecture/FOUNDATION_0.3_PERSISTENCE_TEST_PLAN.md). This remains design-only: no models, migrations, API routes, database, or deployment have been created.
+
+Future AI integration can use the locally installed Ollama through a provider adapter; see [AI Provider / Ollama Architecture](docs/architecture/AI_PROVIDER_OLLAMA_FUTURE.md). AI remains advisory and cannot bypass deterministic ledger validation or user approval.

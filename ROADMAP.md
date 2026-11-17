@@ -326,3 +326,20 @@ PR #12 is an integration test vehicle, not a merge authorization or a replacemen
 - [ ] Implement disposable PostgreSQL atomicity, idempotency, reversal-race, rollback, and owner-isolation tests.
 
 Design contract: [LEDGER_HARDENING_0.2.1.md](docs/finance/LEDGER_HARDENING_0.2.1.md). No persistence, API, migration, production write, or deployment is included in this phase.
+
+
+## Foundation 0.3 — Persistence Architecture (proposed design)
+
+- [x] Propose canonical money storage: integer minor units in `NUMERIC(38,0)`, with immutable currency exponent/version snapshots and explicit 38-digit bound.
+- [x] Design PostgreSQL entities for currency definitions, accounts, journal entries, postings, idempotency records, audit events, and accounting periods.
+- [x] Specify database-enforced balance, ownership, currency, reversal, append-only, and period invariants.
+- [x] Define atomic posting transaction and retry-safe idempotency behavior.
+- [x] Sketch exact-string API contracts for journal creation and account balances.
+- [x] Define disposable PostgreSQL concurrency, rollback, isolation, and immutability test gates.
+- [x] Record future Ollama provider-adapter architecture and AI safety boundary.
+- [ ] Confirm auth principal/FK model and target PostgreSQL version.
+- [ ] Implement schema/models/migrations in a disposable development environment.
+- [ ] Implement API contracts and pass the PostgreSQL test plan.
+- [ ] Review legacy migration/reconciliation strategy before any integration.
+
+Design references: [ADR-003](docs/architecture/ADR-003-canonical-money-storage.md), [schema/API](docs/architecture/FOUNDATION_0.3_POSTGRESQL_SCHEMA_API.md), [test plan](docs/architecture/FOUNDATION_0.3_PERSISTENCE_TEST_PLAN.md), [Ollama note](docs/architecture/AI_PROVIDER_OLLAMA_FUTURE.md). No production persistence or deployment is part of this design milestone.

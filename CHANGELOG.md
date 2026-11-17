@@ -277,3 +277,15 @@ All notable project changes are documented here.
 ### Status
 - Foundation 0.2.1 is a design baseline only. The in-memory ledger remains non-durable and non-concurrency-safe; API, schema, migrations, and PostgreSQL concurrency tests remain future work.
 - No merge, deployment, Render change, production data write, brokerage connection, or external financial action was performed.
+
+
+## Unreleased — Foundation 0.3 — 2026-11-17
+
+### Added
+- Proposed canonical integer minor-unit persistence in PostgreSQL `NUMERIC(38,0)` with a hard 38-digit bound and immutable currency exponent/version snapshots.
+- Designed logical PostgreSQL schema for currency definitions, accounts, journal entries, postings, idempotency, audit events, and accounting periods.
+- Specified atomic posting, deferred balance validation, append-only protection, exact-string API money contracts, and disposable PostgreSQL concurrency tests.
+- Documented future Ollama provider-adapter architecture with AI restricted to advisory/draft workflows behind deterministic financial controls.
+
+### Status
+- Foundation 0.3 is design-only. No SQLAlchemy models, Alembic migrations, API routes, databases, production data, deployments, or Ollama runtime integration were created.
