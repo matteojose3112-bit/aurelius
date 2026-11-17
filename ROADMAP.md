@@ -493,3 +493,7 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [ ] Add first live reference/market data provider after terms, coverage, and licensing review.
 - [ ] Add rate limits, retries, circuit breakers, credential handling, and provider health monitoring.
 - [ ] Add source freshness/staleness policy and coverage reports.
+
+- [x] Validate provider ingestion and migration 0004 on PostgreSQL 16: 34 integration tests passed; backend suite 134 passed; frontend tests/build passed.
+
+- [x] Review global provider candidates, coverage, pricing, and licensing; recommend ECB reference FX as first live adapter and dataset-level World Bank CC-BY review as second.
