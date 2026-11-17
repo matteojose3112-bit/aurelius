@@ -376,3 +376,16 @@ PostgreSQL 16 CI has validated the persistence migration, deferred constraints, 
 
 
 The latest PostgreSQL 16 API integration run passed **27 tests**, including a fail-closed check that account creation is unavailable until the explicit currency-registry seed has been applied. The full backend and frontend CI suites also pass on the validated API code.
+
+
+## Foundation 0.4 — global asset and unit ontology
+
+Aurelius is expanding beyond cash accounting into a global multi-asset reference system. The first domain slice adds an open asset-class vocabulary, generic instrument definitions/identifiers, and an exact unit registry. The illustrative commodity catalog covers gold, silver, platinum, palladium, WTI/Brent crude, natural gas, copper, aluminium, wheat, corn, soybeans, coffee, cocoa, and electricity. Unit conversions use exact rational arithmetic; contextual units such as bushels cannot be converted without commodity/contract context.
+
+This is domain groundwork, not yet a persisted instrument master or market-data feed. The next step is PostgreSQL persistence for assets, instruments, identifiers, venues/MICs, listings, and derivative/bond/prediction contract specifications. No market prices, listings, contract expiries, or trading access are fabricated.
+
+The reference catalog also includes representative equity issuers, sovereign debt, ETFs, Bitcoin/Ether, real estate, prediction events, mortgage liabilities, benchmarks, FX pairs, private equity, and derivatives. These are identity/ontology examples only, not market listings or prices.
+
+The domain now also defines MIC/timezone-aware market venues, time-bounded venue listings, and explicit futures/derivative, bond, and prediction-contract specifications. These contracts retain lifecycle dates, units, tick/contract terms, coupon/day-count terms, resolution sources, and settlement rules.
+
+Market observations and Aurelius forecasts are also separate domain records: observations retain source and observed/retrieved timestamps, while forecasts retain model/version, probability, horizon, evidence, and later resolution. Market-implied probabilities are not treated as ground truth or as Aurelius model forecasts.

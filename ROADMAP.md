@@ -450,3 +450,21 @@ Implementation branch: feat/aurelius-foundation-0.3-ledger-persistence-models. N
 - [ ] Add portfolio holdings, lots, corporate actions, risk analytics, research, and prediction calibration.
 
 The legacy FinTrack transaction/budget/goal API remains in place and continues to use float-backed legacy models. It must be migrated separately; the new Aurelius v1 ledger API does not silently reinterpret legacy rows.
+
+
+## Foundation 0.4 — global instrument master
+
+- [x] Define open asset-class and instrument-type vocabularies rather than closed enums.
+- [x] Add exact rational unit registry with mass, volume, energy, security, derivative, token, event-contract, and area dimensions.
+- [x] Add context-required unit semantics for commodity-dependent units such as bushel.
+- [x] Add illustrative global commodity asset catalog for precious/industrial metals, energy, agriculture, and electricity.
+- [x] Add namespaced/time-bounded instrument identifier domain (ISIN/FIGI/provider IDs).
+- [ ] Persist unit definitions, assets, instruments, identifiers, MIC venues, and listings.
+- [ ] Add futures/options, bond, and prediction/event contract specifications.
+- [ ] Add licensed market-data/FX provider adapters and immutable observations.
+- [ ] Add owner holdings, lots, valuation snapshots, and portfolio analytics.
+
+- [x] Add MIC/timezone venue and time-bounded listing domain types.
+- [x] Add explicit derivative/futures, bond, and prediction-contract specification types.
+
+- [x] Add provenance-aware market observation and separately calibrated forecast domain records; persistence, scoring, and provider adapters remain pending.
