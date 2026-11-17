@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 import pytest
 
 from app.domain.money import Money
@@ -63,3 +61,13 @@ def test_cross_currency_arithmetic_requires_explicit_fx_conversion():
 def test_api_constructor_requires_decimal_string():
     with pytest.raises(TypeError, match="decimal strings"):
         Money.from_decimal_string(12.34, "USD")
+
+
+def test_malformed_decimal_string_is_rejected():
+    with pytest.raises(ValueError, match="valid decimal string"):
+        Money.from_decimal_string("not-a-number", "USD")
+
+
+def test_boolean_amount_is_rejected():
+    with pytest.raises(TypeError, match="never float"):
+        Money(True, "USD")
