@@ -217,7 +217,12 @@ def ingest_market_observations(
                         license_reference=license_policy.terms_version,
                     )
                     .on_conflict_do_nothing(
-                        constraint="uq_market_observations_provider_record"
+                        index_elements=[
+                            MarketObservationModel.provider_source_id,
+                            MarketObservationModel.source_record_id,
+                            MarketObservationModel.observation_type,
+                            MarketObservationModel.instrument_id,
+                        ]
                     )
                 )
                 result = session.execute(statement)
