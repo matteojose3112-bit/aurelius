@@ -512,3 +512,16 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [x] Validate provider ingestion and migration 0004 on PostgreSQL 16: 34 integration tests passed; backend suite 134 passed; frontend tests/build passed.
 
 - [x] Review global provider candidates, coverage, pricing, and licensing; recommend ECB reference FX as first live adapter and dataset-level World Bank CC-BY review as second.
+
+## Foundation 0.6 — portfolio lots and transaction-safe settlement
+
+- [x] Persist owner-scoped portfolios, immutable trade executions, acquisition lots, disposal allocations, and position serialization rows.
+- [x] Add PostgreSQL execution service with replay protection, deterministic lot replay, oversell rejection, and concurrent-position serialization.
+- [x] Refactor ledger posting to expose a caller-session primitive while preserving the transaction-owning journal API.
+- [x] Prove the session-bound posting primitive participates in the caller's rollback boundary (journal, postings, audit, and idempotency all roll back together).
+- [ ] Define trade cash-flow accounting for buys, sells, fees, taxes, settlement dates, partial fills, and realized/unrealized components.
+- [ ] Implement one transaction coordinator for trade execution, lot facts, cash journals, and audit/idempotency records.
+- [ ] Add cross-domain PostgreSQL integration tests for successful settlement, duplicate replay, rollback injection, and concurrent fills.
+- [ ] Only after those gates pass, design read-only portfolio APIs and valuation/FX reporting.
+
+**Boundary:** the current lot service remains long-only and spot-style. It records fills, not orders, and does not yet post corresponding cash/fee/FX journals. No portfolio trading API should be exposed until cross-domain atomicity and accounting semantics are proven.
