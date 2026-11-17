@@ -93,3 +93,53 @@ def test_posting_command_rejects_boolean_owner_id():
             currency_definition_id=command.currency_definition_id,
             postings=command.postings,
         )
+
+
+class FakePostgresError(Exception):
+    def __init__(self, sqlstate):
+        super().__init__(sqlstate)
+        self.sqlstate = sqlstate
+
+
+def test_transient_postgres_sqlstates_are_retryable():
+    from sqlalchemy.exc import DBAPIError
+    from app.persistence.posting_service import _is_retryable_database_error
+
+    assert _is_retryable_database_error(DBAPIError("stmt", {}, FakePostgresError("40001")))
+    assert _is_retryable_database_error(DBAPIError("stmt", {}, FakePostgresError("40P01")))
+    assert _is_retryable_database_error(DBAPIError("stmt", {}, FakePostgresError("08006")))
+    assert not _is_retryable_database_error(DBAPIError("stmt", {}, FakePostgresError("23514")))
+
+
+def test_retry_wrapper_retries_with_bounded_attempts(monkeypatch):
+    from app.persistence import posting_service
+
+    monkeypatch.setattr(posting_service, "sleep", lambda _: None)
+    attempts = {"count": 0}
+
+    def operation():
+        attempts["count"] += 1
+        if attempts["count"] < 3:
+            from sqlalchemy.exc import DBAPIError
+            raise DBAPIError("stmt", {}, FakePostgresError("40001"))
+        return "committed-or-replayed"
+
+    result = posting_service._run_with_transient_retry(operation)
+    assert result == "committed-or-replayed"
+    assert attempts["count"] == 3
+
+
+def test_retry_wrapper_does_not_retry_integrity_errors(monkeypatch):
+    from sqlalchemy.exc import DBAPIError
+    from app.persistence import posting_service
+
+    monkeypatch.setattr(posting_service, "sleep", lambda _: None)
+    attempts = {"count": 0}
+
+    def operation():
+        attempts["count"] += 1
+        raise DBAPIError("stmt", {}, FakePostgresError("23514"))
+
+    with pytest.raises(DBAPIError):
+        posting_service._run_with_transient_retry(operation)
+    assert attempts["count"] == 1
