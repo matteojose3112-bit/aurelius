@@ -39,7 +39,6 @@ class CurrencyDefinition:
     def supports_exact_money(self) -> bool:
         return (
             self.registry_list == "one"
-            and not self.fund
             and self.minor_unit_exponent is not None
         )
 
