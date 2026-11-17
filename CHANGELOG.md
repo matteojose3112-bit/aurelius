@@ -1,3 +1,15 @@
+## [Unreleased] — Foundation 0.6 Atomic Portfolio Lot Service — 2026-11-17
+
+### Added
+- Added PostgreSQL-only atomic trade-fill persistence service with transaction advisory locks for execution IDs and row locks for owner-scoped positions.
+- Added deterministic replay from immutable execution history, exact lot/disposal writes, audit events, same-payload replay, changed-payload conflict, and rejection of backdated fills pending a rebuild workflow.
+- Preserved one currency-registry snapshot per position to prevent a later ISO release from splitting one holding's identity.
+- Added PostgreSQL tests for buy/sell, realized gain/loss, idempotency, oversell rollback, and competing oversell attempts.
+
+### Validation and boundaries
+- Current-head PostgreSQL service/concurrency CI is pending.
+- The service records already-executed fills only. No broker orders, cash-ledger coupling, tax engine, public portfolio API, hosted database migration, Render change, or deployment.
+
 ## [Unreleased] — Foundation 0.6 Portfolio Lot Persistence — 2026-11-17
 
 ### Added
