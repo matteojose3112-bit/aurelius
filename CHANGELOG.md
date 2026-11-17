@@ -1,4 +1,4 @@
-## [Unreleased] — Aurelius transformation assessment — 2026-11-17
+## [Unreleased] — Aurelius Foundation 0.1 — 2026-11-17\n\n### Added\n- Renamed the GitHub repository to `matteojose3112-bit/aurelius`; legacy FinTrack application and Render identifiers remain unchanged pending a separate compatibility review.\n- Added an infrastructure-independent `Money` value object using Python `Decimal`, explicit currency exponents, fixed-scale decimal-string serialization, integer minor units, and same-currency arithmetic.\n- Added unit tests for currency scales, `ROUND_HALF_UP` normalization, non-finite values, float rejection, unknown currencies, and cross-currency arithmetic.\n- Added the money/currency contract, ADR-0001 architecture decision, and Foundation 0.1 implementation status.\n\n### Validation and boundaries\n- Feature branch: `feat/aurelius-foundation-0.1`; CI validation is pending.\n- Existing API, database models, migrations, frontend arithmetic, and production data have not been changed.\n- No Render configuration, infrastructure, secrets, deployment, paid provider, brokerage connection, or money movement changed.\n- Real-money trading and brokerage execution remain disabled.\n\n## [Unreleased] — Aurelius transformation assessment — 2026-11-17
 
 ### Product direction
 - Announced the transformation of FinTrack into **Aurelius**, an evidence-first AI financial intelligence and investment operating system.
@@ -223,7 +223,7 @@ All notable project changes are documented here.
 
 ## Post-merge status — 2026-11-17
 
-- Merged Aurelius transformation documentation PR [#13](https://github.com/matteojose3112-bit/fintrack/pull/13) into `main` at merge commit [560348f](https://github.com/matteojose3112-bit/fintrack/commit/560348f18f96827c1bce0fd4d3079cbb5c0730be).
+- Merged Aurelius transformation documentation PR [#13](https://github.com/matteojose3112-bit/aurelius/pull/13) into `main` at merge commit [560348f](https://github.com/matteojose3112-bit/aurelius/commit/560348f18f96827c1bce0fd4d3079cbb5c0730be).
 - The merge contains README, ROADMAP, and CHANGELOG updates (461 additions, 2 deletions); GitHub reported two checks passed and no deployment was created.
 - Earlier entries in this changelog describe the pre-merge state and are historical. The merged Aurelius planning documents are now on `main`.
 - This was documentation-only: no application code, production data, Render infrastructure, secrets, deployment, paid service, or brokerage action changed.
