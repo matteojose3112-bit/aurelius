@@ -65,7 +65,7 @@ class CurrencyRegistry:
             for row in snapshot["historical"]
         )
         self._validate_unique(current, "current")
-        self._validate_unique(historical, "historical")
+        self._validate_unique(historical, "historical", include_withdrawal_date=True)
 
         self._current = {item.code: item for item in current}
         self._historical = historical
@@ -103,11 +103,16 @@ class CurrencyRegistry:
 
     @staticmethod
     def _validate_unique(
-        definitions: tuple[CurrencyDefinition, ...], label: str
+        definitions: tuple[CurrencyDefinition, ...],
+        label: str,
+        include_withdrawal_date: bool = False,
     ) -> None:
-        codes = [item.code for item in definitions]
-        if len(codes) != len(set(codes)):
-            raise ValueError(f"duplicate currency code in {label} registry snapshot")
+        keys = [
+            (item.code, item.withdrawn) if include_withdrawal_date else item.code
+            for item in definitions
+        ]
+        if len(keys) != len(set(keys)):
+            raise ValueError(f"duplicate currency definition in {label} registry snapshot")
 
     @classmethod
     def from_file(cls, path: str | Path) -> "CurrencyRegistry":
