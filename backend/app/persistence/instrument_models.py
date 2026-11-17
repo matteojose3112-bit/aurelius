@@ -34,8 +34,8 @@ class UnitDefinitionModel(Base):
             name="ck_unit_definitions_precision",
         ),
         CheckConstraint(
-            "(conversion_numerator IS NULL AND conversion_denominator IS NULL) OR "
-            "(conversion_numerator > 0 AND conversion_denominator > 0)",
+            "(context_required = TRUE AND conversion_numerator IS NULL AND conversion_denominator IS NULL) OR "
+            "(context_required = FALSE AND conversion_numerator > 0 AND conversion_denominator > 0)",
             name="ck_unit_definitions_conversion_ratio",
         ),
     )
