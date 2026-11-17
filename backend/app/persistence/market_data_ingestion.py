@@ -78,6 +78,8 @@ def _validate_license(
         raise ProviderLicenseError("provider terms version does not match the stored source")
     if source.rights_scope != capabilities.rights_scope:
         raise ProviderLicenseError("provider rights scope does not match its registered capability")
+    if source.rights_scope not in policy.allowed_purposes:
+        raise ProviderLicenseError("stored provider rights scope is not permitted by the supplied terms")
     if purpose not in policy.allowed_purposes:
         raise ProviderLicenseError("requested purpose is not permitted by provider terms")
     if not policy.global_region_coverage:
