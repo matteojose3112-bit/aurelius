@@ -21,6 +21,7 @@ from app.domain.providers import (
     MarketDataRequest,
     ProviderAdapterError,
     ProviderCapabilities,
+    ProviderCoverageError,
     ProviderObservation,
 )
 
@@ -94,8 +95,8 @@ class ECBReferenceFXAdapter:
         if request.venue_mic is not None:
             raise ProviderCoverageError("ECB reference rates are not exchange-listed venue quotes")
 
-        start_period = request.start_at.date().isoformat()
-        end_period = request.end_at.date().isoformat()
+        start_period = request.start_at.astimezone(timezone.utc).date().isoformat()
+        end_period = request.end_at.astimezone(timezone.utc).date().isoformat()
         observations: list[ProviderObservation] = []
 
         for instrument_id in request.instrument_ids:
@@ -170,5 +171,3 @@ class ECBReferenceFXAdapter:
 
         return tuple(observations)
 
-
-from app.domain.providers import ProviderCoverageError  # noqa: E402
