@@ -419,3 +419,5 @@ All notable project changes are documented here.
 
 ### Status
 - Provider-neutral contracts and licensed ingestion are implemented and CI-validated. No live provider adapter, external network fetch, API key, subscription, production source, or production data write was configured.
+
+- Added current provider candidate review covering ECB, World Bank, Twelve Data, CoinGecko, Alpha Vantage, FRED, and Nasdaq Data Link, including current plan limits and data-rights cautions. Recommended ECB reference FX first; no subscriptions or integrations.
