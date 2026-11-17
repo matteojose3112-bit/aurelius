@@ -6,7 +6,7 @@ Last updated: 2026-11-17
 
 **Aurelius** is the planned AI financial intelligence and investment operating system evolving from the FinTrack personal-finance MVP.
 
-**Current status: Foundation 0.1 in progress.** The Aurelius transformation plan is merged into `main`; a separate feature branch now contains the first exact-money domain primitive, unit tests, money contract, and architecture decision record. No AI agents, market-data integrations, forecasting, paper trading, or brokerage connections are implemented. The existing application remains the FinTrack MVP.
+**Current status: Foundation 0.1 in progress.** The Aurelius transformation plan is merged into `main`; a separate feature branch now contains the first exact-money domain primitive, unit tests, money contract, and architecture decision record. Feature-branch CI run #125 passed backend and frontend jobs. No AI agents, market-data integrations, forecasting, paper trading, or brokerage connections are implemented. The existing application remains the FinTrack MVP.
 
 **Guiding principle:** evidence, exact calculations, transparency, and downside protection over confident-sounding answers.
 
@@ -29,7 +29,7 @@ Last updated: 2026-11-17
 - [x] Add fixed-scale decimal-string serialization, minor-unit conversion, same-currency arithmetic, and cross-currency rejection.
 - [x] Add deterministic unit tests for scale, rounding, float rejection, invalid values, and FX boundary behavior.
 - [x] Record ADR-0001 for modular-monolith boundaries and read-only AI decision support.
-- [ ] Obtain passing CI on the feature branch and preserve all legacy MVP tests.
+- [x] Obtain passing CI on the feature branch and preserve all legacy MVP tests (run #125: backend compile, Alembic upgrade, pytest; frontend tests and production build).
 - [ ] Design account/ledger invariants and event correction/reversal rules before persistence changes.
 
 ### Financial correctness and data model
