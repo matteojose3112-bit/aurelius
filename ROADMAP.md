@@ -490,10 +490,13 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [x] Require explicit region/venue/global coverage; no implicit assumption of worldwide availability.
 - [x] Add license-aware PostgreSQL ingestion service with source/terms validation and exact Decimal values.
 - [x] Add observation deduplication by provider source, source record ID, observation type, and instrument.
-- [ ] Add first live reference/market data provider after terms, coverage, and licensing review.
+- [ ] Run a controlled live smoke test for the ECB reference FX prototype after source/terms verification.
 - [ ] Add rate limits, retries, circuit breakers, credential handling, and provider health monitoring.
 - [ ] Add source freshness/staleness policy and coverage reports.
 
 - [x] Validate provider ingestion and migration 0004 on PostgreSQL 16: 34 integration tests passed; backend suite 134 passed; frontend tests/build passed.
 
 - [x] Review global provider candidates, coverage, pricing, and licensing; recommend ECB reference FX as first live adapter and dataset-level World Bank CC-BY review as second.
+
+- [x] Implement ECB daily EUR-base reference FX adapter with explicit instrument-to-series mapping and mocked HTTP tests.
+- [ ] Run a controlled live ECB public-data smoke test and record operational freshness/revision behavior; no API key or paid subscription required.
