@@ -343,3 +343,19 @@ Design contract: [LEDGER_HARDENING_0.2.1.md](docs/finance/LEDGER_HARDENING_0.2.1
 - [ ] Review legacy migration/reconciliation strategy before any integration.
 
 Design references: [ADR-003](docs/architecture/ADR-003-canonical-money-storage.md), [schema/API](docs/architecture/FOUNDATION_0.3_POSTGRESQL_SCHEMA_API.md), [test plan](docs/architecture/FOUNDATION_0.3_PERSISTENCE_TEST_PLAN.md), [Ollama note](docs/architecture/AI_PROVIDER_OLLAMA_FUTURE.md). No production persistence or deployment is part of this design milestone.
+
+
+## Foundation 0.3 — global persistence groundwork
+
+- [x] Inspect existing authentication and migration model: users.id is INTEGER; JWT sub serializes this ID; legacy ownership FKs are INTEGER.
+- [x] Decide first-release financial owner FK uses INTEGER users.id, with ON DELETE RESTRICT; no duplicate identity system.
+- [x] Inspect database stack: SQLAlchemy 2.0.36, Alembic 1.14.0, psycopg 3.2.3; SQLite local default and PostgreSQL URL support.
+- [x] Confirm repository does not pin hosted PostgreSQL major version; set PostgreSQL 16 as disposable CI baseline only, subject to hosted-version verification before future deployment.
+- [x] Select initially deferred PostgreSQL constraint triggers for commit-time balanced journal/ownership/currency/reversal validation, plus append-only runtime protections.
+- [x] Define global-market separation: ISO 4217 currencies, historical currency snapshots, instrument/venue identifiers, FX observations, timezones, locale, and jurisdiction are distinct.
+- [ ] Implement global currency registry ingestion and immutable seed snapshots.
+- [ ] Implement SQLAlchemy persistence models and Alembic migration in isolated development/CI.
+- [ ] Add PostgreSQL 16 service and real concurrency/rollback tests.
+- [ ] Implement atomic posting/idempotency service; keep API integration gated on test results.
+
+References: [Global Markets Architecture](docs/architecture/FOUNDATION_0.3_GLOBAL_MARKETS.md), [Auth/DB inspection](docs/architecture/FOUNDATION_0.3_AUTH_DATABASE_INSPECTION.md), [schema/API](docs/architecture/FOUNDATION_0.3_POSTGRESQL_SCHEMA_API.md).
