@@ -123,3 +123,7 @@ No broker order execution is included in this foundation.
 ## Domain implementation status
 
 Implemented in backend/app/domain/asset_registry.py: exact unit registry, extensible asset catalog, namespaced identifiers, instrument definitions, MIC/timezone venues, time-bounded listings, derivative/futures specifications, bond terms, and prediction-contract resolution specifications. These are domain types only; persistence and provider adapters remain future work.
+
+## Observations and forecasts
+
+The domain now separates immutable market observations (source, observed_at, retrieved_at, value, unit/currency, session, methodology) from Aurelius ForecastRecord values (model/version, probability, horizon, evidence, and later outcome/resolution). Market-implied probabilities are not forecasts and neither is ground truth. Persistence, provider ingestion, and forecast scoring remain future work.
