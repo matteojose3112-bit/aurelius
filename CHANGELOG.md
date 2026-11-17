@@ -421,3 +421,13 @@ All notable project changes are documented here.
 - Provider-neutral contracts and licensed ingestion are implemented and CI-validated. No live provider adapter, external network fetch, API key, subscription, production source, or production data write was configured.
 
 - Added current provider candidate review covering ECB, World Bank, Twelve Data, CoinGecko, Alpha Vantage, FRED, and Nasdaq Data Link, including current plan limits and data-rights cautions. Recommended ECB reference FX first; no subscriptions or integrations.
+
+### Added
+- Added ECB daily EUR-base reference FX adapter for explicitly mapped spot-FX instruments, with exact Decimal parsing, UTC date representation, source-record IDs, and explicit reference-rate-not-executable semantics.
+- Added mocked HTTP and PostgreSQL end-to-end ingestion tests for the ECB adapter; no live external request was made.
+
+### Validation
+- PostgreSQL 16 integration: 35 passed. Backend suite: 139 passed, with PostgreSQL-only cases skipped in SQLite mode. Frontend tests/build passed.
+
+### Status
+- ECB adapter prototype is implemented but not connected to a live feed. No API key, subscription, external fetch, production source record, or production data write was used.
