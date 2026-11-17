@@ -123,3 +123,7 @@ No broker order execution is included in this foundation.
 ## Domain implementation status
 
 Implemented in backend/app/domain/asset_registry.py: exact unit registry, extensible asset catalog, namespaced identifiers, instrument definitions, MIC/timezone venues, time-bounded listings, derivative/futures specifications, bond terms, and prediction-contract resolution specifications. These are domain types only; persistence and provider adapters remain future work.
+
+## Persistence implementation status
+
+Foundation 0.4 persistence is implemented in backend/app/persistence/instrument_models.py and Alembic revision 0003_global_instrument_master.py. The migration adds exact unit/asset/instrument reference tables, identifiers, MIC venues/listings, derivative/bond/prediction contract specs, provider source terms, market observations, forecast records, and separate resolutions. PostgreSQL enforces non-overlapping identifier/listing validity windows and append-only reference/observation/forecast history. The curated unit/asset seed is idempotent and explicit. Latest CI: 31 PostgreSQL integration tests and 125 backend tests passed. No external market data or provider subscription has been added.
