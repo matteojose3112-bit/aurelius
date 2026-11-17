@@ -415,3 +415,5 @@ No live provider, API key, paid subscription, or market feed is configured. Prov
 
 
 Latest Foundation 0.5 CI passed: **34 PostgreSQL 16 integration tests**, **134 backend tests** (34 PostgreSQL-only tests skipped in SQLite mode), frontend tests, and frontend build. The fake-provider integration verifies license rejection before fetch, source/terms/coverage checks, and duplicate observation replay without creating duplicate rows.
+
+Provider candidate research is documented in docs/architecture/FOUNDATION_0.5_PROVIDER_CANDIDATE_REVIEW.md. The proposed first live adapter is ECB reference FX, followed by carefully licensed World Bank macro datasets. Broad market subscriptions remain deferred; no provider has been connected or purchased.
