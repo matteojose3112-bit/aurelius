@@ -166,3 +166,19 @@ def test_provider_adapter_error_exposes_retryability_without_hiding_reason():
     error = ProviderAdapterError("rate limited", retryable=True)
     assert error.retryable is True
     assert str(error) == "rate limited"
+
+
+
+def test_global_provider_coverage_must_be_explicit():
+    registry = ProviderRegistry()
+    registry.register(
+        FakeAdapter(
+            make_capabilities(
+                provider_key="global_provider",
+                region_codes=(),
+                venue_mics=("XNAS",),
+                global_region_coverage=True,
+            )
+        )
+    )
+    assert len(registry.supporting(make_request(region_code="CA"))) == 1
