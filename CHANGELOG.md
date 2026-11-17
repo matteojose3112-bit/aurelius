@@ -300,3 +300,17 @@ All notable project changes are documented here.
 
 ### Status
 - This commit records architecture decisions and inspection only. No ORM models, migrations, API endpoints, local/hosted database changes, Render operations, or deployments were performed.
+
+
+## Unreleased — Foundation 0.3 currency registry — 2026-11-17
+
+### Added
+- Added a bundled, versioned ISO 4217 snapshot based on SIX List One (178 current codes) and List Three (152 jurisdiction/withdrawal-date records across 137 historical codes).
+- Added a maintainer-only XML updater that fetches the official SIX List One and List Three sources; the application performs no runtime network calls for currency definitions.
+- Replaced the hard-coded eight-currency exponent map with registry-backed Money precision for current ISO monetary units with published exponents.
+- Preserved numeric codes as three-character strings, fund flags, country associations, historical withdrawal dates, and unknown historical exponents without guessing.
+- Added tests for global currency coverage, 0/2/3/4-decimal units, reference-code rejection, fund/unit metadata, jurisdiction-specific history, and XML parsing.
+- Added global asset/instrument coverage architecture for commodities, securities, derivatives, digital assets, real/alternative assets, prediction markets, macro benchmarks, and liabilities.
+
+### Status
+- Implementation is committed to an isolated draft feature branch. CI validation is pending. No ORM models, Alembic migrations, PostgreSQL database, API integration, Render changes, or deployment are included in this slice.
