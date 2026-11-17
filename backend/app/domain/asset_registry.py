@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from fractions import Fraction
 import re
 from types import MappingProxyType
 from typing import Mapping
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 _CODE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -288,10 +289,8 @@ class MarketVenue:
         if not self.name.strip() or not _CODE_PATTERN.fullmatch(self.venue_type):
             raise ValueError("venue name and type are required")
         try:
-            from zoneinfo import ZoneInfo
-
             ZoneInfo(self.timezone)
-        except Exception as exc:
+        except (ZoneInfoNotFoundError, ValueError, TypeError) as exc:
             raise ValueError("venue timezone must be a valid IANA timezone") from exc
 
 
@@ -400,12 +399,11 @@ class PredictionContractSpec:
     question: str
     outcomes: tuple[str, ...]
     resolution_source_url: str
-    resolution_deadline: object
+    resolution_deadline: datetime
     settlement_currency_code: str
     payout_per_contract: Decimal
 
     def __post_init__(self) -> None:
-        from datetime import datetime
         from urllib.parse import urlparse
 
         if not isinstance(self.instrument_id, UUID):
