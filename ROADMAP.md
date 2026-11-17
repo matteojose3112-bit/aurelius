@@ -359,3 +359,17 @@ Design references: [ADR-003](docs/architecture/ADR-003-canonical-money-storage.m
 - [ ] Implement atomic posting/idempotency service; keep API integration gated on test results.
 
 References: [Global Markets Architecture](docs/architecture/FOUNDATION_0.3_GLOBAL_MARKETS.md), [Auth/DB inspection](docs/architecture/FOUNDATION_0.3_AUTH_DATABASE_INSPECTION.md), [schema/API](docs/architecture/FOUNDATION_0.3_POSTGRESQL_SCHEMA_API.md).
+
+
+## Foundation 0.3 — currency registry implementation
+
+- [x] Bundle SIX ISO 4217 List One current release (178 codes; 165 with published minor-unit precision).
+- [x] Preserve List Three historical currency facts as 152 code/withdrawal-date records across 137 distinct codes, retaining jurisdiction-specific withdrawal dates.
+- [x] Add a maintainer updater that downloads official SIX XML and deterministically refreshes the bundled snapshot; no runtime network lookup.
+- [x] Replace the eight-currency hard-coded Money exponent map with registry-backed precision, including 0/2/3/4 decimal units.
+- [x] Keep historical exponent unknown when List Three does not publish it; never infer it from a modern replacement currency.
+- [x] Add registry, Money, and XML-importer regression tests.
+- [ ] Validate the implementation through GitHub Actions before proceeding to ORM/migration work.
+- [ ] Add an extensible asset/instrument master for commodities, securities, derivatives, crypto, prediction contracts, real assets, liabilities, and benchmarks.
+
+Coverage design: [Global Asset Coverage](docs/architecture/FOUNDATION_0.3_GLOBAL_ASSET_COVERAGE.md). Registry code: `backend/app/domain/currency.py`; snapshot: `backend/app/domain/data/iso4217_snapshot.json`; updater: `backend/scripts/update_iso4217_snapshot.py`.
