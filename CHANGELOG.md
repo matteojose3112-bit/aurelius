@@ -219,3 +219,12 @@ All notable project changes are documented here.
 - Added the genuine npm-generated `frontend/package-lock.json` (lockfileVersion 3) to the integration branch.
 - Switched frontend CI from `npm install` to clean, deterministic `npm ci` and removed temporary workflow write permissions/bootstrap logic.
 - CI run #114 passed clean installation, zero-vulnerability npm audit, all frontend tests, frontend production build, backend tests, and populated PostgreSQL migration.
+
+
+## Post-merge status — 2026-11-17
+
+- Merged Aurelius transformation documentation PR [#13](https://github.com/matteojose3112-bit/fintrack/pull/13) into `main` at merge commit [560348f](https://github.com/matteojose3112-bit/fintrack/commit/560348f18f96827c1bce0fd4d3079cbb5c0730be).
+- The merge contains README, ROADMAP, and CHANGELOG updates (461 additions, 2 deletions); GitHub reported two checks passed and no deployment was created.
+- Earlier entries in this changelog describe the pre-merge state and are historical. The merged Aurelius planning documents are now on `main`.
+- This was documentation-only: no application code, production data, Render infrastructure, secrets, deployment, paid service, or brokerage action changed.
+- Follow-up required: reconcile the historical release-hardening statements with the current status of PRs #3–#12 before treating the release baseline as current. Do not infer that merging PR #13 merged or deployed those separate changes.
