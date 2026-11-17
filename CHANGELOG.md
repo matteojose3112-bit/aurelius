@@ -353,3 +353,15 @@ All notable project changes are documented here.
 - PostgreSQL 16 CI passed with 25 integration tests, including service-level replay/conflict, competing reversals, account close/post serialization, and failure-injection rollback. Full backend/frontend CI passed on the validated branch head.
 
 - Added bounded three-attempt retry for transient PostgreSQL serialization/deadlock/connection failures. Retries reuse the same idempotency key, so unknown commit outcomes safely replay or execute once.
+
+
+## Unreleased — Foundation 0.3 versioned ledger API — 2026-11-17
+
+### Added
+- Exposed authenticated v1 endpoints for current cash currency discovery, owner-scoped financial account creation/listing, native-currency balance derivation, journal posting/reads, and exact reversals.
+- Added strict request schemas using integer minor-unit strings and UUID account identifiers; owner identity comes exclusively from JWT context.
+- Added a dry-run-by-default currency registry seed CLI; explicit --apply is required, and production additionally requires --allow-production.
+- Added PostgreSQL API integration tests for account creation, idempotent journal posting/replay, balance derivation, journal reads, reversal, authentication, and cross-owner isolation.
+
+### Status
+- PostgreSQL 16 migration, persistence, posting service, and initial API integration are validated in CI. No hosted database, registry seed, Render resource, production record, broker, or deployment was touched.
