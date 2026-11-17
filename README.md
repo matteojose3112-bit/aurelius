@@ -373,3 +373,6 @@ After Alembic upgrade, seed the immutable currency registry explicitly:
 - Production additionally requires --allow-production. No seed command was executed against any hosted database in this work.
 
 PostgreSQL 16 CI has validated the persistence migration, deferred constraints, posting/reversal transactions, and API flow. The existing FinTrack float-based endpoints remain legacy and are not silently rewritten by the new API. Global instrument/commodity/derivative/prediction-market master data and provider adapters remain future milestones.
+
+
+The latest PostgreSQL 16 API integration run passed **27 tests**, including a fail-closed check that account creation is unavailable until the explicit currency-registry seed has been applied. The full backend and frontend CI suites also pass on the validated API code.
