@@ -119,3 +119,7 @@ The initial seed catalog is illustrative and extensible, not an exhaustive marke
 7. Owner holdings, valuation, FX, and portfolio analytics.
 
 No broker order execution is included in this foundation.
+
+## Domain implementation status
+
+Implemented in backend/app/domain/asset_registry.py: exact unit registry, extensible asset catalog, namespaced identifiers, instrument definitions, MIC/timezone venues, time-bounded listings, derivative/futures specifications, bond terms, and prediction-contract resolution specifications. These are domain types only; persistence and provider adapters remain future work.
