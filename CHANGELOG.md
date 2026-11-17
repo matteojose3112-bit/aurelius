@@ -380,3 +380,5 @@ All notable project changes are documented here.
 
 ### Status
 - Domain groundwork only. Instrument master persistence, venue/listing registry, contract specs, market observations, data providers, portfolio holdings, and trading are not yet implemented.
+
+- Expanded representative asset examples to include equities, sovereign debt, ETFs, cryptoassets, real estate, prediction events, liabilities, benchmarks, FX pairs, private equity, and derivatives.
