@@ -463,3 +463,6 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [ ] Add futures/options, bond, and prediction/event contract specifications.
 - [ ] Add licensed market-data/FX provider adapters and immutable observations.
 - [ ] Add owner holdings, lots, valuation snapshots, and portfolio analytics.
+
+- [x] Add MIC/timezone venue and time-bounded listing domain types.
+- [x] Add explicit derivative/futures, bond, and prediction-contract specification types.
