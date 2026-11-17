@@ -348,6 +348,13 @@ class ProviderSourceModel(Base):
 class MarketObservationModel(Base):
     __tablename__ = "market_observations"
     __table_args__ = (
+        UniqueConstraint(
+            "provider_source_id",
+            "source_record_id",
+            "observation_type",
+            "instrument_id",
+            name="uq_market_observations_provider_record",
+        ),
         Index(
             "ix_market_observations_instrument_observed",
             "instrument_id",
