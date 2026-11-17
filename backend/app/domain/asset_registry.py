@@ -1,0 +1,255 @@
+"""Extensible global asset, instrument, and exact-unit reference domain."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
+from fractions import Fraction
+import re
+from types import MappingProxyType
+from typing import Mapping
+from uuid import UUID
+
+
+_CODE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_ASSET_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_-]{0,31}\.[a-z0-9][a-z0-9_.-]{0,127}$")
+
+
+@dataclass(frozen=True, slots=True)
+class UnitDefinition:
+    code: str
+    dimension: str
+    symbol: str
+    base_unit_code: str
+    conversion_numerator: int | None
+    conversion_denominator: int | None
+    quantity_precision: int
+    context_required: bool = False
+
+    def __post_init__(self) -> None:
+        if not _CODE_PATTERN.fullmatch(self.code):
+            raise ValueError("unit code must be a lowercase namespaced-safe identifier")
+        if not _CODE_PATTERN.fullmatch(self.dimension):
+            raise ValueError("unit dimension must be a lowercase identifier")
+        if not _CODE_PATTERN.fullmatch(self.base_unit_code):
+            raise ValueError("base unit code must be a lowercase identifier")
+        if not 0 <= self.quantity_precision <= 18:
+            raise ValueError("quantity precision must be between 0 and 18")
+        has_numerator = self.conversion_numerator is not None
+        has_denominator = self.conversion_denominator is not None
+        if has_numerator != has_denominator:
+            raise ValueError("unit conversion numerator and denominator must be supplied together")
+        if has_numerator and (
+            self.conversion_numerator <= 0 or self.conversion_denominator <= 0
+        ):
+            raise ValueError("unit conversion ratio must be positive")
+        if self.context_required and has_numerator:
+            raise ValueError("context-required units cannot claim a universal conversion")
+        if not self.context_required and not has_numerator:
+            raise ValueError("non-contextual units require an exact conversion ratio")
+
+    @property
+    def conversion_to_base(self) -> Fraction | None:
+        if self.context_required:
+            return None
+        return Fraction(self.conversion_numerator, self.conversion_denominator)
+
+
+class UnitRegistry:
+    def __init__(self, definitions: tuple[UnitDefinition, ...]) -> None:
+        by_code: dict[str, UnitDefinition] = {}
+        for definition in definitions:
+            if definition.code in by_code:
+                raise ValueError(f"duplicate unit definition: {definition.code}")
+            by_code[definition.code] = definition
+        for definition in definitions:
+            if definition.base_unit_code not in by_code:
+                raise ValueError(f"unknown base unit: {definition.base_unit_code}")
+            base = by_code[definition.base_unit_code]
+            if base.dimension != definition.dimension:
+                raise ValueError(f"base unit dimension mismatch for {definition.code}")
+            if definition.code == definition.base_unit_code and (
+                definition.conversion_to_base != Fraction(1, 1)
+            ):
+                raise ValueError("base unit must have an exact 1:1 conversion")
+        self._definitions: Mapping[str, UnitDefinition] = MappingProxyType(by_code)
+
+    @property
+    def definitions(self) -> tuple[UnitDefinition, ...]:
+        return tuple(self._definitions[key] for key in sorted(self._definitions))
+
+    def get(self, code: str) -> UnitDefinition:
+        try:
+            return self._definitions[code]
+        except KeyError as exc:
+            raise ValueError(f"unsupported quantity unit: {code}") from exc
+
+    def conversion_ratio(self, source_code: str, target_code: str) -> Fraction:
+        source = self.get(source_code)
+        target = self.get(target_code)
+        if source.dimension != target.dimension:
+            raise ValueError("unit dimensions do not match")
+        if source.context_required or target.context_required:
+            raise ValueError("unit conversion requires instrument/commodity context")
+        if source.base_unit_code != target.base_unit_code:
+            raise ValueError("units do not share a canonical base unit")
+        return source.conversion_to_base / target.conversion_to_base
+
+    def convert_exact(
+        self, quantity: Decimal | int | str, source_code: str, target_code: str
+    ) -> Fraction:
+        if isinstance(quantity, bool):
+            raise TypeError("quantity cannot be boolean")
+        if isinstance(quantity, float):
+            raise TypeError("binary floating-point quantities are not accepted")
+        decimal_quantity = quantity if isinstance(quantity, Decimal) else Decimal(str(quantity))
+        if not decimal_quantity.is_finite():
+            raise ValueError("quantity must be finite")
+        numerator, denominator = decimal_quantity.as_integer_ratio()
+        return Fraction(numerator, denominator) * self.conversion_ratio(
+            source_code, target_code
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AssetDefinition:
+    asset_id: str
+    asset_class: str
+    asset_type: str
+    name: str
+    quantity_unit_code: str
+    description: str = ""
+
+    def __post_init__(self) -> None:
+        if not _ASSET_ID_PATTERN.fullmatch(self.asset_id):
+            raise ValueError("asset_id must be a stable namespace-qualified identifier")
+        if not _CODE_PATTERN.fullmatch(self.asset_class):
+            raise ValueError("asset_class must be an open lowercase identifier")
+        if not _CODE_PATTERN.fullmatch(self.asset_type):
+            raise ValueError("asset_type must be an open lowercase identifier")
+        if not self.name.strip():
+            raise ValueError("asset name must be non-empty")
+        if not self.quantity_unit_code:
+            raise ValueError("asset quantity unit is required")
+
+
+class AssetRegistry:
+    def __init__(
+        self,
+        definitions: tuple[AssetDefinition, ...],
+        units: UnitRegistry,
+    ) -> None:
+        by_id: dict[str, AssetDefinition] = {}
+        for definition in definitions:
+            if definition.asset_id in by_id:
+                raise ValueError(f"duplicate asset definition: {definition.asset_id}")
+            units.get(definition.quantity_unit_code)
+            by_id[definition.asset_id] = definition
+        self._definitions: Mapping[str, AssetDefinition] = MappingProxyType(by_id)
+        self._units = units
+
+    @property
+    def definitions(self) -> tuple[AssetDefinition, ...]:
+        return tuple(self._definitions[key] for key in sorted(self._definitions))
+
+    def get(self, asset_id: str) -> AssetDefinition:
+        try:
+            return self._definitions[asset_id]
+        except KeyError as exc:
+            raise ValueError(f"unsupported asset: {asset_id}") from exc
+
+    def by_class(self, asset_class: str) -> tuple[AssetDefinition, ...]:
+        return tuple(
+            item
+            for item in self.definitions
+            if item.asset_class == asset_class
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class InstrumentIdentifier:
+    namespace: str
+    value: str
+    source: str
+    valid_from: date | None = None
+    valid_to: date | None = None
+
+    def __post_init__(self) -> None:
+        if not _CODE_PATTERN.fullmatch(self.namespace):
+            raise ValueError("identifier namespace must be a lowercase identifier")
+        if not self.value.strip() or not self.source.strip():
+            raise ValueError("identifier value and source must be non-empty")
+        if self.valid_from and self.valid_to and self.valid_to < self.valid_from:
+            raise ValueError("identifier validity range is inverted")
+
+
+@dataclass(frozen=True, slots=True)
+class InstrumentDefinition:
+    instrument_id: UUID
+    instrument_type: str
+    name: str
+    underlying_asset_id: str | None = None
+    quote_currency_code: str | None = None
+    identifiers: tuple[InstrumentIdentifier, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.instrument_id, UUID):
+            raise TypeError("instrument_id must be UUID")
+        if not _CODE_PATTERN.fullmatch(self.instrument_type):
+            raise ValueError("instrument_type must be an open lowercase identifier")
+        if not self.name.strip():
+            raise ValueError("instrument name must be non-empty")
+        if self.underlying_asset_id is not None and not _ASSET_ID_PATTERN.fullmatch(
+            self.underlying_asset_id
+        ):
+            raise ValueError("underlying_asset_id must be namespace-qualified")
+        if self.quote_currency_code is not None and not re.fullmatch(
+            r"[A-Z]{3}", self.quote_currency_code
+        ):
+            raise ValueError("quote currency must be a three-letter uppercase code")
+        namespaces = [(item.namespace, item.value, item.source) for item in self.identifiers]
+        if len(namespaces) != len(set(namespaces)):
+            raise ValueError("duplicate instrument identifier/source pair")
+
+
+UNIT_DEFINITIONS = (
+    UnitDefinition("gram", "mass", "g", "gram", 1, 1, 6),
+    UnitDefinition("troy_ounce", "mass", "ozt", "gram", 311034768, 10000000, 6),
+    UnitDefinition("ounce", "mass", "oz", "gram", 28349523125, 1000000000, 6),
+    UnitDefinition("pound", "mass", "lb", "gram", 45359237, 100000, 6),
+    UnitDefinition("metric_tonne", "mass", "t", "gram", 1000000, 1, 6),
+    UnitDefinition("litre", "volume", "L", "litre", 1, 1, 6),
+    UnitDefinition("barrel", "volume", "bbl", "litre", 158987294928, 1000000000, 6),
+    UnitDefinition("us_gallon", "volume", "gal", "litre", 3785411784, 1000000000, 6),
+    UnitDefinition("joule", "energy", "J", "joule", 1, 1, 6),
+    UnitDefinition("mmbtu", "energy", "MMBtu", "joule", 105505585262, 100, 6),
+    UnitDefinition("mwh", "energy", "MWh", "joule", 3600000000, 1, 6),
+    UnitDefinition("share", "security_quantity", "sh", "share", 1, 1, 8),
+    UnitDefinition("contract", "derivative_quantity", "contract", "contract", 1, 1, 8),
+    UnitDefinition("token", "token_quantity", "token", "token", 1, 1, 18),
+    UnitDefinition("event_share", "event_contract_quantity", "share", "event_share", 1, 1, 8),
+    UnitDefinition("square_metre", "area", "m2", "square_metre", 1, 1, 6),
+    UnitDefinition("bushel", "commodity_specific", "bu", "bushel", None, None, 6, True),
+)
+DEFAULT_UNIT_REGISTRY = UnitRegistry(UNIT_DEFINITIONS)
+
+
+ASSET_DEFINITIONS = (
+    AssetDefinition("commodity.gold", "commodity", "precious_metal", "Gold", "troy_ounce"),
+    AssetDefinition("commodity.silver", "commodity", "precious_metal", "Silver", "troy_ounce"),
+    AssetDefinition("commodity.platinum", "commodity", "precious_metal", "Platinum", "troy_ounce"),
+    AssetDefinition("commodity.palladium", "commodity", "precious_metal", "Palladium", "troy_ounce"),
+    AssetDefinition("commodity.wti_crude_oil", "commodity", "energy", "WTI crude oil", "barrel"),
+    AssetDefinition("commodity.brent_crude_oil", "commodity", "energy", "Brent crude oil", "barrel"),
+    AssetDefinition("commodity.natural_gas", "commodity", "energy", "Natural gas", "mmbtu"),
+    AssetDefinition("commodity.copper", "commodity", "industrial_metal", "Copper", "metric_tonne"),
+    AssetDefinition("commodity.aluminium", "commodity", "industrial_metal", "Aluminium", "metric_tonne"),
+    AssetDefinition("commodity.wheat", "commodity", "agriculture", "Wheat", "bushel"),
+    AssetDefinition("commodity.corn", "commodity", "agriculture", "Corn", "bushel"),
+    AssetDefinition("commodity.soybeans", "commodity", "agriculture", "Soybeans", "bushel"),
+    AssetDefinition("commodity.coffee", "commodity", "agriculture", "Coffee", "pound"),
+    AssetDefinition("commodity.cocoa", "commodity", "agriculture", "Cocoa", "metric_tonne"),
+    AssetDefinition("commodity.electricity", "commodity", "energy", "Electricity", "mwh"),
+)
+DEFAULT_ASSET_REGISTRY = AssetRegistry(ASSET_DEFINITIONS, DEFAULT_UNIT_REGISTRY)
