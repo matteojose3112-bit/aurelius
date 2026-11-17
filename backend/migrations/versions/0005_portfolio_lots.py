@@ -11,9 +11,10 @@ depends_on = None
 
 
 def upgrade():
-    op.create_unique_constraint(
-        "uq_financial_accounts_id_owner", "financial_accounts", ["id", "owner_id"]
-    )
+    with op.batch_alter_table("financial_accounts") as batch_op:
+        batch_op.create_unique_constraint(
+            "uq_financial_accounts_id_owner", ["id", "owner_id"]
+        )
 
     op.create_table(
         "investment_portfolios",
@@ -250,4 +251,5 @@ def downgrade():
     op.drop_table("trade_executions")
     op.drop_index("ix_investment_portfolios_owner_status", table_name="investment_portfolios")
     op.drop_table("investment_portfolios")
-    op.drop_constraint("uq_financial_accounts_id_owner", "financial_accounts", type_="unique")
+    with op.batch_alter_table("financial_accounts") as batch_op:
+        batch_op.drop_constraint("uq_financial_accounts_id_owner", type_="unique")
