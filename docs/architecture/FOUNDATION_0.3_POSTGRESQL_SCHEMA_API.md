@@ -146,7 +146,7 @@ The disposable PostgreSQL 16 CI job validates:
 - Same-key concurrent insert serialization and atomic rollback.
 - Owner/currency composite FK enforcement and period-overlap exclusion.
 
-PostgreSQL CI currently passes 26 integration tests covering database invariants, posting-service replay/conflict, competing reversals, close/post races, failure injection/rollback, and the authenticated API path. Additional work will expand market-data/provider contract tests and global instrument/asset persistence.
+PostgreSQL CI currently passes 27 integration tests covering database invariants, posting-service replay/conflict, competing reversals, close/post races, failure injection/rollback, and the authenticated API path. Additional work will expand market-data/provider contract tests and global instrument/asset persistence.
 
 ## 10. Release gates
 
