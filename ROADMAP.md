@@ -6,7 +6,7 @@ Last updated: 2026-11-17
 
 **Aurelius** is the planned AI financial intelligence and investment operating system evolving from the FinTrack personal-finance MVP.
 
-**Current status: assessment and architecture planning.** No AI agents, market-data integrations, forecasting, paper trading, or brokerage connections are implemented. The current application remains the FinTrack MVP until changes are separately reviewed, merged, and deployed.
+**Current status: Foundation 0.1 in progress.** The Aurelius transformation plan is merged into `main`; a separate feature branch now contains the first exact-money domain primitive, unit tests, money contract, and architecture decision record. No AI agents, market-data integrations, forecasting, paper trading, or brokerage connections are implemented. The existing application remains the FinTrack MVP.
 
 **Guiding principle:** evidence, exact calculations, transparency, and downside protection over confident-sounding answers.
 
@@ -23,9 +23,9 @@ Last updated: 2026-11-17
 - [ ] Complete a clean, reviewed integration plan for PRs #3, #4, #5, #7, #9, and #10. PR #12 currently integrates #3/#5/#7/#10, but is not a substitute for reviewing each source PR.
 - [ ] Keep all PRs draft until security, data migration, and deployment gates are satisfied.
 
-### Financial correctness and data model
-- [ ] Establish a documented money contract: currency code, currency-specific scale/minor units, exact calculations, rounding policy, and serialization contract.
-- [ ] Avoid converting exact Decimal values to binary floats at the API boundary for financial truth; choose decimal-string or integer-minor-unit API representation and migrate frontend calculations safely.
+### Aurelius Foundation 0.1 — active work\n- [x] Add an infrastructure-independent `Money` value object using Python `Decimal`.\n- [x] Add explicit initial currency exponents for BHD, CAD, COP, EUR, GBP, JPY, KWD, and USD; reject unsupported codes rather than assuming two decimals.\n- [x] Add fixed-scale decimal-string serialization, minor-unit conversion, same-currency arithmetic, and cross-currency rejection.\n- [x] Add deterministic unit tests for scale, rounding, float rejection, invalid values, and FX boundary behavior.\n- [x] Record ADR-0001 for modular-monolith boundaries and read-only AI decision support.\n- [ ] Obtain passing CI on the feature branch and preserve all legacy MVP tests.\n- [ ] Design account/ledger invariants and event correction/reversal rules before persistence changes.\n\n### Financial correctness and data model
+- [x] Establish the initial documented money contract: currency code, explicit currency scale/minor units, Decimal calculations, ROUND_HALF_UP normalization, and decimal-string serialization policy. See `docs/finance/MONEY_CONTRACT.md`.
+- [ ] Migrate the existing API away from binary-float monetary fields to decimal-string representations; the new domain primitive is not yet wired into legacy endpoints.
 - [ ] Model financial accounts, opening balances, transfers, liabilities, and account ownership before claiming complete net-worth/accounting support.
 - [ ] Add multi-currency support with explicit native/functional/reporting currencies and timestamped FX rates.
 - [ ] Design an auditable transaction/ledger model, reconciliation status, immutable import history, and correction/reversal workflow.
@@ -168,7 +168,7 @@ Last updated: 2026-11-10
 - API: [https://fintrack-api-l1wa.onrender.com](https://fintrack-api-l1wa.onrender.com)
 - Frontend: [https://fintrack-web-int6.onrender.com](https://fintrack-web-int6.onrender.com)
 - Database: `fintrack-db` (PostgreSQL 18, free tier)
-- Repository: `matteojose3112-bit/fintrack`, branch `main`
+- Repository: `matteojose3112-bit/aurelius`, branch `main`
 
 ### Deployment and verification
 
