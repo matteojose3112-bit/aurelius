@@ -4,13 +4,12 @@
 This is a maintainer command, not application runtime behavior:
     python backend/scripts/update_iso4217_snapshot.py
 It downloads List One (current currencies/funds) and List Three (historical
-denominations), groups country rows by code, records release dates and source
-checksums, and writes the deterministic JSON snapshot consumed by the domain.
+denominations), groups current rows by code and historical rows by code plus
+country-specific withdrawal date, and writes the deterministic JSON snapshot consumed by the domain.
 """
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import urllib.request
@@ -75,8 +74,9 @@ def parse_current(xml_bytes: bytes) -> tuple[str, list[dict]]:
             name_element is not None
             and name_element.attrib.get("IsFund", "").lower() == "true"
         )
+        key = (code, withdrawn)
         row = grouped.setdefault(
-            code,
+            key,
             {
                 "code": code,
                 "numeric_code": numeric,
@@ -98,7 +98,7 @@ def parse_current(xml_bytes: bytes) -> tuple[str, list[dict]]:
         if country and country not in row["countries"]:
             row["countries"].append(country)
 
-    return published, [grouped[code] for code in sorted(grouped)]
+    return published, [grouped[key] for key in sorted(grouped, key=lambda item: (item[0], item[1] or ""))]
 
 
 def parse_historical(xml_bytes: bytes) -> tuple[str, list[dict]]:
@@ -107,7 +107,7 @@ def parse_historical(xml_bytes: bytes) -> tuple[str, list[dict]]:
     if not published:
         raise ValueError("SIX List Three XML is missing its Pblshd release date")
 
-    grouped: dict[str, dict] = {}
+    grouped: dict[tuple[str, str | None], dict] = {}
     for entry in root.findall(".//HstrcCcyNtry"):
         code = text(entry, "Ccy")
         name = text(entry, "CcyNm")
@@ -128,12 +128,10 @@ def parse_historical(xml_bytes: bytes) -> tuple[str, list[dict]]:
                 "countries": [],
             },
         )
-        if (
-            row["numeric_code"] != numeric
-            or row["name"] != name
-            or row["withdrawn"] != withdrawn
-        ):
-            raise ValueError(f"inconsistent duplicate ISO List Three rows for {code}")
+        if row["numeric_code"] != numeric or row["name"] != name:
+            raise ValueError(
+                f"inconsistent duplicate ISO List Three rows for {code} withdrawn {withdrawn}"
+            )
         country = text(entry, "CtryNm")
         if country and country not in row["countries"]:
             row["countries"].append(country)
@@ -155,8 +153,6 @@ def build_snapshot(list_one: bytes, list_three: bytes) -> dict:
             "official_page": OFFICIAL_PAGE,
             "list_one_url": LIST_ONE_URL,
             "list_three_url": LIST_THREE_URL,
-            "list_one_sha256": hashlib.sha256(list_one).hexdigest(),
-            "list_three_sha256": hashlib.sha256(list_three).hexdigest(),
         },
         "current_published": current_date,
         "historical_published": historical_date,
