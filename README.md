@@ -412,3 +412,6 @@ PostgreSQL 16 CI validates the instrument-master migration, temporal exclusion c
 Aurelius now has provider-neutral contracts for global market/reference data, explicit coverage declarations, license policies, exact Decimal observations, and a PostgreSQL ingestion service. Ingestion checks provider identity/terms, purpose, geographic rights, instrument/type/time coverage, unit/currency references, and deduplicates immutable observations by provider record identity. Fetching occurs outside the database transaction; persistence is atomic.
 
 No live provider, API key, paid subscription, or market feed is configured. Provider-specific adapters will be added only after coverage and licensing are verified. See docs/architecture/FOUNDATION_0.5_PROVIDER_ADAPTER_FRAMEWORK.md.
+
+
+Latest Foundation 0.5 CI passed: **34 PostgreSQL 16 integration tests**, **134 backend tests** (34 PostgreSQL-only tests skipped in SQLite mode), frontend tests, and frontend build. The fake-provider integration verifies license rejection before fetch, source/terms/coverage checks, and duplicate observation replay without creating duplicate rows.
