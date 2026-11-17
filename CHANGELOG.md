@@ -1,3 +1,13 @@
+## [Unreleased] — Money primitive hardening — 2026-11-17
+
+### Added
+- Added exact `Money.from_minor_units()` construction for currencies with zero-, two-, and three-decimal exponents.
+- Canonicalized rounded zero values so negative zero cannot leak into serialized financial output.
+- Added regression tests for minor-unit round trips, invalid minor-unit types, and canonical zero.
+
+### Validation
+- New changes are committed on `feat/aurelius-foundation-0.1`; CI for the updated head is pending.
+
 ## [Unreleased] — Foundation 0.1 CI validation — 2026-11-17
 
 ### Validation
