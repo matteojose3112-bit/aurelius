@@ -10,17 +10,32 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.exc import IntegrityError, DBAPIError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import User
 from app.persistence.currency_registry_seed import seed_currency_registry
 from app.persistence.models import (
     AccountingPeriodModel,
+    AuditEventModel,
     CurrencyDefinitionModel,
     FinancialAccountModel,
     JournalEntryModel,
     JournalPostingModel,
     IdempotencyRecordModel,
+)
+
+
+
+from app.persistence.posting_service import (
+    AccountClosed,
+    AccountingPeriodUnavailable,
+    IdempotencyConflict,
+    JournalAlreadyReversed,
+    PostJournalCommand,
+    PostingLine,
+    ReverseJournalCommand,
+    post_journal,
+    reverse_journal,
 )
 
 
@@ -490,3 +505,187 @@ def test_postgres_currency_registry_rows_are_append_only(pg_session):
     with pytest.raises(DBAPIError, match="append-only"):
         pg_session.commit()
     pg_session.rollback()
+
+
+
+def make_post_command(owner, usd, debit_account, credit_account, description="service post", amount=1000):
+    return PostJournalCommand(
+        owner_id=owner.id,
+        actor_id=owner.id,
+        effective_date=date(2026, 11, 17),
+        description=description,
+        currency_definition_id=usd.id,
+        postings=(
+            PostingLine(debit_account.id, "DEBIT", amount),
+            PostingLine(credit_account.id, "CREDIT", amount),
+        ),
+    )
+
+
+def test_posting_service_commits_journal_audit_and_idempotency(pg_engine, pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    command = make_post_command(owner, usd, debit_account, credit_account)
+
+    result = post_journal(factory, command, "service-key-001")
+
+    assert result.status_code == 201
+    assert result.replayed is False
+    assert result.body["currency"]["code"] == "USD"
+    assert len(result.body["postings"]) == 2
+    journal_id = UUID(result.body["journal_id"])
+    assert pg_session.get(JournalEntryModel, journal_id) is not None
+    assert pg_session.scalar(
+        select(func.count()).select_from(AuditEventModel).where(
+            AuditEventModel.aggregate_id == journal_id
+        )
+    ) == 1
+    assert pg_session.scalar(
+        select(func.count()).select_from(IdempotencyRecordModel).where(
+            IdempotencyRecordModel.idempotency_key == "service-key-001"
+        )
+    ) == 1
+
+
+def test_posting_service_replays_same_key_and_rejects_changed_payload(pg_engine, pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    command = make_post_command(owner, usd, debit_account, credit_account)
+
+    first = post_journal(factory, command, "service-key-002")
+    replay = post_journal(factory, command, "service-key-002")
+    assert replay.replayed is True
+    assert replay.body == first.body
+
+    changed = make_post_command(
+        owner, usd, debit_account, credit_account, description="different payload"
+    )
+    with pytest.raises(IdempotencyConflict):
+        post_journal(factory, changed, "service-key-002")
+
+    assert pg_session.scalar(
+        select(func.count()).select_from(JournalEntryModel).where(
+            JournalEntryModel.owner_id == owner.id
+        )
+    ) == 1
+
+
+def test_posting_service_rolls_back_idempotency_claim_on_validation_failure(pg_engine, pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    debit_account.status = "CLOSED"
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    command = make_post_command(owner, usd, debit_account, credit_account)
+
+    with pytest.raises(AccountClosed):
+        post_journal(factory, command, "retry-after-failure")
+
+    assert pg_session.scalar(
+        select(func.count()).select_from(IdempotencyRecordModel).where(
+            IdempotencyRecordModel.idempotency_key == "retry-after-failure"
+        )
+    ) == 0
+
+    debit_account.status = "OPEN"
+    pg_session.commit()
+    result = post_journal(factory, command, "retry-after-failure")
+    assert result.status_code == 201
+
+
+def test_posting_service_enforces_configured_open_period(pg_engine, pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    pg_session.add(AccountingPeriodModel(
+        id=uuid4(), owner_id=owner.id,
+        starts_on=date(2026, 1, 1), ends_on=date(2026, 12, 31), status="CLOSED",
+    ))
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    command = make_post_command(owner, usd, debit_account, credit_account)
+
+    with pytest.raises(AccountingPeriodUnavailable):
+        post_journal(factory, command, "closed-period-key")
+
+
+def test_posting_service_serializes_concurrent_same_key_replays(pg_engine, pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    command = make_post_command(owner, usd, debit_account, credit_account)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [
+            pool.submit(post_journal, factory, command, "concurrent-service-key")
+            for _ in range(2)
+        ]
+        results = [future.result(timeout=20) for future in futures]
+
+    assert sorted(result.replayed for result in results) == [False, True]
+    assert results[0].body["journal_id"] == results[1].body["journal_id"]
+    assert pg_session.scalar(
+        select(func.count()).select_from(JournalEntryModel).where(
+            JournalEntryModel.owner_id == owner.id
+        )
+    ) == 1
+
+
+def test_reverse_service_creates_exactly_one_reversal(pg_engine, pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    original = post_journal(
+        factory,
+        make_post_command(owner, usd, debit_account, credit_account),
+        "original-journal-key",
+    )
+    reverse_command = ReverseJournalCommand(
+        owner_id=owner.id,
+        actor_id=owner.id,
+        source_journal_id=UUID(original.body["journal_id"]),
+        effective_date=date(2026, 11, 18),
+    )
+
+    reversal = reverse_journal(factory, reverse_command, "reversal-key-001")
+    replay = reverse_journal(factory, reverse_command, "reversal-key-001")
+    assert reversal.replayed is False
+    assert replay.replayed is True
+    assert replay.body == reversal.body
+    assert reversal.body["reversal_of"] == original.body["journal_id"]
+
+    with pytest.raises(JournalAlreadyReversed):
+        reverse_journal(factory, reverse_command, "reversal-key-002")
+
+
+def test_reverse_service_serializes_competing_reversals(pg_engine, pg_session):
+    owner, usd, _, debit_account, credit_account = setup_owner_and_accounts(pg_session)
+    pg_session.commit()
+    factory = sessionmaker(bind=pg_engine, expire_on_commit=False)
+    original = post_journal(
+        factory,
+        make_post_command(owner, usd, debit_account, credit_account),
+        "original-for-race",
+    )
+    command = ReverseJournalCommand(
+        owner_id=owner.id,
+        actor_id=owner.id,
+        source_journal_id=UUID(original.body["journal_id"]),
+        effective_date=date(2026, 11, 18),
+    )
+
+    def reverse_with_key(key):
+        try:
+            return reverse_journal(factory, command, key)
+        except JournalAlreadyReversed:
+            return "already-reversed"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(reverse_with_key, ["reverse-race-a", "reverse-race-b"]))
+
+    assert sum(isinstance(result, str) for result in results) == 1
+    assert sum(not isinstance(result, str) for result in results) == 1
+    assert pg_session.scalar(
+        select(func.count()).select_from(JournalEntryModel).where(
+            JournalEntryModel.reversal_of == UUID(original.body["journal_id"])
+        )
+    ) == 1
