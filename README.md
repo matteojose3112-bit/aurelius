@@ -420,3 +420,11 @@ No live provider, API key, paid subscription, or market feed is configured. Prov
 Latest Foundation 0.5 CI passed: **34 PostgreSQL 16 integration tests**, **134 backend tests** (34 PostgreSQL-only tests skipped in SQLite mode), frontend tests, and frontend build. The fake-provider integration verifies license rejection before fetch, source/terms/coverage checks, and duplicate observation replay without creating duplicate rows.
 
 Provider candidate research is documented in docs/architecture/FOUNDATION_0.5_PROVIDER_CANDIDATE_REVIEW.md. The proposed first live adapter is ECB reference FX, followed by carefully licensed World Bank macro datasets. Broad market subscriptions remain deferred; no provider has been connected or purchased.
+
+## Foundation 0.6 — portfolio lot persistence and transaction composition
+
+Aurelius now has owner-scoped investment portfolios, immutable trade-execution and acquisition-lot records, immutable disposal allocations, and position-lock rows for serialized long-only spot-style position updates. The execution service records already-executed fills only; it does not submit orders. It rebuilds lot state from immutable history and protects execution replay/concurrency in PostgreSQL.
+
+The ledger posting layer now also exposes `post_journal_in_session(session, command, idempotency_key)`. This composition primitive requires an active caller-owned transaction and never commits, rolls back, closes, or retries that session. The existing `post_journal(...)` API remains as a transaction-owning wrapper. This is the required foundation for a future trade-settlement service to persist holdings, cash journals, fees, FX legs, and audit records in one transaction.
+
+This is an enabling refactor, not completed trade settlement: the portfolio execution service is not yet coupled to cash accounting. No trading API, broker connection, order placement, cash movement, or production operation is enabled. See `docs/architecture/FOUNDATION_0.6_PORTFOLIO_LOT_PERSISTENCE.md` and the session-bound posting tests.
