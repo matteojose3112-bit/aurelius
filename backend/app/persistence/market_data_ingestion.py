@@ -80,11 +80,13 @@ def _validate_license(
         raise ProviderLicenseError("provider rights scope does not match its registered capability")
     if purpose not in policy.allowed_purposes:
         raise ProviderLicenseError("requested purpose is not permitted by provider terms")
-    if region_code:
-        if not policy.global_region_coverage and region_code not in policy.allowed_regions:
+    if not policy.global_region_coverage:
+        if region_code is None:
+            raise ProviderLicenseError("a region must be declared for region-scoped provider terms")
+        if region_code not in policy.allowed_regions:
             raise ProviderLicenseError("provider license does not cover the requested region")
         coverage = source.geographic_coverage
-        if not policy.global_region_coverage and coverage and region_code not in coverage:
+        if not coverage or region_code not in coverage:
             raise ProviderLicenseError("stored provider coverage does not include the requested region")
 
 
@@ -118,7 +120,9 @@ def ingest_market_observations(
         raise ProviderLicenseError("provider license policy belongs to another provider")
     if purpose not in license_policy.allowed_purposes:
         raise ProviderLicenseError("requested purpose is not permitted by provider terms")
-    if request.region_code and not license_policy.global_region_coverage:
+    if not license_policy.global_region_coverage:
+        if request.region_code is None:
+            raise ProviderLicenseError("a region must be declared for region-scoped provider terms")
         if request.region_code not in license_policy.allowed_regions:
             raise ProviderLicenseError("provider license does not cover the requested region")
 
