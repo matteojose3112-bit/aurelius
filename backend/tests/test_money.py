@@ -99,3 +99,15 @@ def test_negative_zero_has_canonical_serialization():
     money = Money.from_decimal_string("-0.004", "USD")
     assert money.to_decimal_string() == "0.00"
     assert money.minor_units == 0
+
+
+def test_money_uses_full_registry_and_four_decimal_units():
+    assert len(Money.CURRENCY_EXPONENTS) > 100
+    assert Money.from_decimal_string("1.23456", "CLF").to_decimal_string() == "1.2346"
+    assert Money.from_minor_units(12345, "CLF").to_decimal_string() == "1.2345"
+
+
+@pytest.mark.parametrize("currency", ["XAU", "XAG", "XPD", "XPT", "XXX", "BGN"])
+def test_reference_and_historical_codes_are_not_accepted_as_current_money(currency):
+    with pytest.raises(ValueError):
+        Money.from_decimal_string("1.00", currency)

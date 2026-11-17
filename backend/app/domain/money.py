@@ -1,14 +1,17 @@
-"""Exact, currency-aware money primitives for Aurelius.
+"""Exact, registry-backed money primitives for Aurelius.
 
-Amounts are represented as Decimal values and never accept binary floats.
-This module is deliberately independent of SQLAlchemy, FastAPI, and providers.
+Amounts use Decimal and integer minor units only; binary floats are rejected.
+The domain remains independent of SQLAlchemy, FastAPI, and market-data providers.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
-from typing import ClassVar
+from types import MappingProxyType
+from typing import ClassVar, Mapping
+
+from .currency import DEFAULT_CURRENCY_REGISTRY
 
 
 _CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
@@ -16,33 +19,32 @@ _CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
 
 @dataclass(frozen=True, slots=True)
 class Money:
-    """An amount denominated in one explicitly supported ISO-style currency.
+    """An amount in a current ISO 4217 monetary unit.
 
-    Construction rounds to the currency's minor-unit scale using ROUND_HALF_UP.
-    Cross-currency arithmetic is rejected; FX conversion belongs in a separate,
-    evidence-bearing domain service.
+    Construction rounds to the published minor-unit scale using ROUND_HALF_UP.
+    Cross-currency arithmetic is rejected; FX conversion is a separate,
+    timestamped, evidence-bearing domain operation.
     """
 
     amount: Decimal
     currency: str
 
-    CURRENCY_EXPONENTS: ClassVar[dict[str, int]] = {
-        "BHD": 3,
-        "CAD": 2,
-        "COP": 2,
-        "EUR": 2,
-        "GBP": 2,
-        "JPY": 0,
-        "KWD": 3,
-        "USD": 2,
-    }
+    # Compatibility surface for callers that used the former class mapping.
+    # The values now come from the complete bundled SIX/ISO snapshot.
+    CURRENCY_EXPONENTS: ClassVar[Mapping[str, int]] = MappingProxyType(
+        DEFAULT_CURRENCY_REGISTRY.current_money_units
+    )
 
     def __post_init__(self) -> None:
         currency = self.currency.upper() if isinstance(self.currency, str) else ""
         if not _CURRENCY_PATTERN.fullmatch(currency):
             raise ValueError("currency must be a three-letter uppercase currency code")
-        if currency not in self.CURRENCY_EXPONENTS:
-            raise ValueError(f"unsupported currency: {currency}")
+        try:
+            definition = DEFAULT_CURRENCY_REGISTRY.get_money_unit(currency)
+        except ValueError as exc:
+            raise ValueError(f"unsupported currency: {currency}") from exc
+        exponent = definition.minor_unit_exponent
+        assert exponent is not None
 
         if isinstance(self.amount, bool) or isinstance(self.amount, float):
             raise TypeError("money amounts must be Decimal or decimal strings, never float")
@@ -59,13 +61,11 @@ class Money:
         if not amount.is_finite():
             raise ValueError("money amount must be finite")
 
-        exponent = self.CURRENCY_EXPONENTS[currency]
         quantum = Decimal(1).scaleb(-exponent)
         try:
             normalized = amount.quantize(quantum, rounding=ROUND_HALF_UP)
         except InvalidOperation as exc:
             raise ValueError("amount exceeds the supported Decimal precision") from exc
-        # Canonicalize signed zero so equivalent zero amounts serialize identically.
         if normalized.is_zero():
             normalized = abs(normalized)
         object.__setattr__(self, "amount", normalized)
@@ -100,12 +100,10 @@ class Money:
 
     @property
     def minor_units(self) -> int:
-        """Return the exact integer number of minor units for this currency."""
         exponent = self.CURRENCY_EXPONENTS[self.currency]
         return int(self.amount.scaleb(exponent))
 
     def to_decimal_string(self) -> str:
-        """Return a fixed-scale, JSON-safe decimal string."""
         exponent = self.CURRENCY_EXPONENTS[self.currency]
         return f"{self.amount:.{exponent}f}"
 
@@ -113,7 +111,9 @@ class Money:
         if not isinstance(other, Money):
             raise TypeError("money arithmetic requires another Money value")
         if self.currency != other.currency:
-            raise ValueError("cannot combine different currencies without an explicit FX conversion")
+            raise ValueError(
+                "cannot combine different currencies without an explicit FX conversion"
+            )
 
     def __add__(self, other: "Money") -> "Money":
         self._require_same_currency(other)
