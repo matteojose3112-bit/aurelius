@@ -264,3 +264,16 @@ All notable project changes are documented here.
 - Earlier entries in this changelog describe the pre-merge state and are historical. The merged Aurelius planning documents are now on `main`.
 - This was documentation-only: no application code, production data, Render infrastructure, secrets, deployment, paid service, or brokerage action changed.
 - Follow-up required: reconcile the historical release-hardening statements with the current status of PRs #3–#12 before treating the release baseline as current. Do not infer that merging PR #13 merged or deployed those separate changes.
+
+
+## Unreleased — Foundation 0.2.1 — 2026-11-17
+
+### Added
+- Defined the ledger hardening contract for owner-scoped idempotency, canonical request fingerprints, retry-safe replay, and changed-payload conflicts.
+- Specified atomic posting, deterministic account lock order, unique reversal constraints, append-only database protections, account closure, effective dating, and backdated-entry policy.
+- Added reconciliation/import-deduplication and correction golden scenarios.
+- Reviewed legacy PR #10 and integration PR #12: Numeric(14,2) remains a legacy MVP convention and is not the canonical multi-currency ledger persistence design.
+
+### Status
+- Foundation 0.2.1 is a design baseline only. The in-memory ledger remains non-durable and non-concurrency-safe; API, schema, migrations, and PostgreSQL concurrency tests remain future work.
+- No merge, deployment, Render change, production data write, brokerage connection, or external financial action was performed.
