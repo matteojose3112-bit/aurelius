@@ -6,7 +6,15 @@
 
 **Operating principle:** deterministic financial calculations and traceable source data come first; AI interprets and challenges evidence, but never invents facts or silently executes financial actions.
 
-## Current Aurelius development status — 2026-11-17\n\n- Repository renamed to `matteojose3112-bit/aurelius`; the legacy FinTrack application and Render resource names are retained until separately reviewed.\n- Aurelius transformation strategy and phased roadmap are merged into `main` through PR #13.\n- Foundation 0.1 work is in progress on `feat/aurelius-foundation-0.1`; this branch adds `Money`, its unit tests, a money contract, and ADR-0001. CI validation is pending.\n- No database migration, API contract change, frontend money rewrite, Render change, deployment, paid provider, brokerage connection, or production-data write has occurred.\n- See [Money and Currency Contract](docs/finance/MONEY_CONTRACT.md), [ADR-0001](docs/architecture/ADR-0001-financial-core-boundaries.md), and [Foundation 0.1 status](docs/architecture/FOUNDATION_0.1_STATUS.md).\n\n## Aurelius transformation — assessment baseline
+## Current Aurelius development status — 2026-11-17
+
+- Repository renamed to `matteojose3112-bit/aurelius`; the legacy FinTrack application and Render resource names are retained until separately reviewed.
+- Aurelius transformation strategy and phased roadmap are merged into `main` through PR #13.
+- Foundation 0.1 work is in progress on `feat/aurelius-foundation-0.1`; this branch adds `Money`, its unit tests, a money contract, and ADR-0001. CI validation is pending.
+- No database migration, API contract change, frontend money rewrite, Render change, deployment, paid provider, brokerage connection, or production-data write has occurred.
+- See [Money and Currency Contract](docs/finance/MONEY_CONTRACT.md), [ADR-0001](docs/architecture/ADR-0001-financial-core-boundaries.md), and [Foundation 0.1 status](docs/architecture/FOUNDATION_0.1_STATUS.md).
+
+## Aurelius transformation — assessment baseline
 
 ### What is reusable
 - React/Vite/Tailwind dashboard and existing transaction, budget, goal, and chart workflows.
