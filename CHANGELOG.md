@@ -506,3 +506,17 @@ All notable project changes are documented here.
 
 ### Boundary
 - The resolver performs no writes and never commits, rolls back, closes, or retries the caller's Session. Trade settlement and journal posting remain unimplemented.
+
+
+## Unreleased — Foundation 0.6 currency-scale allocation primitives — 2026-11-18
+
+### Added
+- Added pure Decimal-to-minor-unit conversion using an explicitly supplied currency exponent and ROUND_HALF_UP.
+- Added exact conversion back from integer minor units and a 38-digit ledger bound.
+- Added deterministic weighted minor-unit allocation: stable key ordering, floor allocation, and exact final residual assignment.
+- Added unit coverage for zero-, two-, and three-decimal currencies, negative amounts, float/non-finite rejection, overflow, and input-order-independent residual allocation.
+
+### Boundary
+- The primitive deliberately does not look up a current currency registry definition; the caller must supply the immutable exponent snapshot captured for the trade.
+- Existing portfolio lot/disposal facts are not yet quantized through this helper. Snapshot propagation and lot-engine integration remain required before settlement coordination.
+- No trade coordinator, journal posting, API, broker integration, or cash movement is included.
