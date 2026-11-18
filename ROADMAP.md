@@ -523,7 +523,8 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [x] Add owner-scoped portfolio-to-ledger mapping persistence with composite owner/currency constraints, distinct account roles, and PostgreSQL role/status validation (see docs/architecture/FOUNDATION_0.6_SETTLEMENT_ACCOUNT_MAPPING.md).
 - [x] Add a caller-owned PostgreSQL mapping resolver that locks the portfolio, mapping, and four ledger accounts in deterministic order and revalidates use-time status/type/owner/currency.
 - [x] Add pure shared currency-scale conversion and deterministic minor-unit residual-allocation primitives with explicit immutable exponent input, ROUND_HALF_UP, and the ledger 38-digit bound.
-- [ ] Integrate the currency snapshot exponent into trade executions and lot/disposal persistence so persisted Decimal facts reconcile exactly to the settlement minor-unit totals.
+- [x] Integrate the immutable currency exponent into new lot-engine executions with deterministic multi-lot disposal allocation; preserve historical executions under precision-policy v1.
+- [ ] Complete PostgreSQL validation for multi-lot residuals, partial disposals, precision-version replay, and historical v1 rebuild stability.
 - [ ] Implement one transaction coordinator for trade execution, lot facts, cash journals, and audit/idempotency records.
 - [ ] Add cross-domain PostgreSQL integration tests for successful settlement, duplicate replay, rollback injection, cash sufficiency races, and concurrent fills.
 - [ ] Only after those gates pass, design read-only portfolio APIs and valuation/FX reporting.
