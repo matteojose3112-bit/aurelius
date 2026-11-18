@@ -41,4 +41,4 @@ This change does not add mapping CRUD endpoints, choose default ledger accounts,
 
 - Model tests verify the mapping key, owner/currency composite foreign keys, and distinct-account invariant.
 - PostgreSQL integration tests verify a valid mapping, duplicate-scope rejection, wrong account-role rejection, and cross-owner rejection.
-- CI must apply migration 0006 on PostgreSQL 16 before the integration tests can validate the trigger and constraints.
+- CI applies migration 0006 on PostgreSQL 16 and validates the mapping trigger/constraints. The final draft PR head passed 46 PostgreSQL integration tests and 154 backend tests (46 PostgreSQL-only cases skipped in SQLite mode).
