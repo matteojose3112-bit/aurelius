@@ -11,26 +11,26 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column(
-        "trade_executions",
-        sa.Column(
-            "accounting_precision_version",
-            sa.SmallInteger(),
-            nullable=False,
-            server_default="1",
-        ),
-    )
-    op.create_check_constraint(
-        "ck_trade_executions_precision_version",
-        "trade_executions",
-        "accounting_precision_version IN (1, 2)",
-    )
+    # Batch mode keeps the revision portable to SQLite migration tests.
+    with op.batch_alter_table("trade_executions") as batch_op:
+        batch_op.add_column(
+            sa.Column(
+                "accounting_precision_version",
+                sa.SmallInteger(),
+                nullable=False,
+                server_default="1",
+            )
+        )
+        batch_op.create_check_constraint(
+            "ck_trade_executions_precision_version",
+            "accounting_precision_version IN (1, 2)",
+        )
 
 
 def downgrade():
-    op.drop_constraint(
-        "ck_trade_executions_precision_version",
-        "trade_executions",
-        type_="check",
-    )
-    op.drop_column("trade_executions", "accounting_precision_version")
+    with op.batch_alter_table("trade_executions") as batch_op:
+        batch_op.drop_constraint(
+            "ck_trade_executions_precision_version",
+            type_="check",
+        )
+        batch_op.drop_column("accounting_precision_version")
