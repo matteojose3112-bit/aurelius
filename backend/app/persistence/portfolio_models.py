@@ -53,6 +53,7 @@ class TradeExecutionModel(Base):
         CheckConstraint("quantity > 0", name="ck_trade_executions_quantity_positive"),
         CheckConstraint("unit_price >= 0", name="ck_trade_executions_unit_price_nonnegative"),
         CheckConstraint("fee >= 0", name="ck_trade_executions_fee_nonnegative"),
+        CheckConstraint("accounting_precision_version IN (1, 2)", name="ck_trade_executions_precision_version"),
         CheckConstraint(
             "(cost_basis_method = 'specific' AND specific_lot_id IS NOT NULL) OR "
             "(cost_basis_method <> 'specific' AND specific_lot_id IS NULL)",
