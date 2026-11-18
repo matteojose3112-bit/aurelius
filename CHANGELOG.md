@@ -468,3 +468,16 @@ All notable project changes are documented here.
 
 ### Boundary
 - The portfolio and ledger services can now participate in the same caller-owned transaction. A coordinator that invokes both and defines the trade/cash/fee/FX accounting entries is still outstanding; no user-facing trade API is enabled.
+
+
+## Unreleased — Foundation 0.6 trade settlement accounting specification — 2026-11-18
+
+### Added
+- Documented proposed single-currency BUY/SELL journal mechanics, purchase-fee capitalization, sale-fee net-proceeds treatment, realized gain/loss, and worked examples.
+- Defined the required owner-scoped mapping between brokerage cash accounts, portfolio investment control accounts, and realized gain/loss accounts.
+- Specified trade-date handling, independent partial-fill identity, idempotency, caller-owned transaction composition, cash-sufficiency controls, and required PostgreSQL failure/concurrency tests.
+- Identified the blocking precision gate between unscaled Decimal lot accounting and integer minor-unit ledger postings.
+
+### Status and boundaries
+- Documentation/design only. The account mapping, shared rounding/reconciliation policy, and settlement coordinator are not implemented.
+- No trading API, brokerage connection, order placement, cash movement, production write, deployment, or infrastructure change was performed.

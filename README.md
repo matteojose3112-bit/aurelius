@@ -434,3 +434,10 @@ This is an enabling refactor, not completed trade settlement: the portfolio exec
 The portfolio lot execution layer now exposes `apply_portfolio_execution_in_session(session, owner_id, actor_id, execution, ...)` alongside the original transaction-owning wrapper. The new primitive requires an active PostgreSQL transaction and does not commit, roll back, close, or retry the caller's session. This makes portfolio facts and ledger journals composable under one transaction coordinator. A PostgreSQL regression verifies that rolling back the caller transaction removes the execution, acquisition lot, and audit event together.
 
 The two session-bound primitives are now available as building blocks; the actual coordinator that writes a trade and its corresponding cash/fee/FX journals together is still the next step. See PR #31. No public trading endpoint is enabled.
+
+
+## Foundation 0.6 — trade settlement accounting specification
+
+The next milestone is documented in `docs/architecture/FOUNDATION_0.6_TRADE_SETTLEMENT_ACCOUNTING.md`. It defines proposed BUY/SELL journal mechanics, fee treatment, owner-scoped account mapping requirements, replay/transaction rules, cash-sufficiency controls, settlement-date assumptions, and the precision/rounding gate between exact lot decimals and integer minor-unit ledger postings.
+
+This is a design contract only. The account mapping and shared rounding policy do not yet exist, so the settlement coordinator is not implemented and no trade API, broker connection, order placement, or cash movement is enabled.

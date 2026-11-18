@@ -519,9 +519,11 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [x] Add PostgreSQL execution service with replay protection, deterministic lot replay, oversell rejection, and concurrent-position serialization.
 - [x] Refactor ledger posting to expose a caller-session primitive while preserving the transaction-owning journal API.
 - [x] Prove the session-bound posting primitive participates in the caller's rollback boundary (journal, postings, audit, and idempotency all roll back together).
-- [ ] Define trade cash-flow accounting for buys, sells, fees, taxes, settlement dates, partial fills, and realized/unrealized components.
+- [x] Document proposed BUY/SELL cash-flow accounting, fee treatment, trade-date assumption, partial-fill identity, realized gain/loss, cash sufficiency, and cross-domain transaction/idempotency requirements (see docs/architecture/FOUNDATION_0.6_TRADE_SETTLEMENT_ACCOUNTING.md).
+- [ ] Add owner-scoped portfolio-to-ledger account mapping for brokerage cash, investment control, realized gain, and realized loss accounts.
+- [ ] Implement shared currency-scale rounding/reconciliation between exact Decimal lot facts and integer minor-unit journal postings.
 - [ ] Implement one transaction coordinator for trade execution, lot facts, cash journals, and audit/idempotency records.
-- [ ] Add cross-domain PostgreSQL integration tests for successful settlement, duplicate replay, rollback injection, and concurrent fills.
+- [ ] Add cross-domain PostgreSQL integration tests for successful settlement, duplicate replay, rollback injection, cash sufficiency races, and concurrent fills.
 - [ ] Only after those gates pass, design read-only portfolio APIs and valuation/FX reporting.
 
 **Boundary:** the current lot service remains long-only and spot-style. It records fills, not orders, and does not yet post corresponding cash/fee/FX journals. No portfolio trading API should be exposed until cross-domain atomicity and accounting semantics are proven.
