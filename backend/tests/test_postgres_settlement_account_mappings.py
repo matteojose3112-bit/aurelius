@@ -104,9 +104,15 @@ def test_postgres_accepts_valid_mapping_and_enforces_one_mapping_per_scope(pg_se
 
 def test_postgres_rejects_wrong_account_role_and_cross_owner_mapping(pg_session):
     owner, usd, portfolio, accounts = make_context(pg_session)
+    wrong_gain = FinancialAccountModel(
+        id=uuid4(), owner_id=owner.id, name="Wrong role",
+        account_type="ASSET", currency_definition_id=usd.id, status="OPEN",
+    )
+    pg_session.add(wrong_gain)
+    pg_session.flush()
     invalid_role = mapping_for(
         owner, usd, portfolio, accounts,
-        realized_gain_account_id=accounts["investment"].id,
+        realized_gain_account_id=wrong_gain.id,
     )
     pg_session.add(invalid_role)
     with pytest.raises(IntegrityError, match="open INCOME"):
