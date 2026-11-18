@@ -1,48 +1,28 @@
-# Foundation 0.6 — Currency-scale and minor-unit allocation contract
+# Foundation 0.6 — currency-scale integration into portfolio lots
 
-**Status:** Pure domain primitives implemented; portfolio lot integration remains a blocking gate.
+**Status:** Implemented behind an explicit accounting-policy version; PostgreSQL validation is pending.
 
-## Purpose
+## Versioned compatibility
 
-The portfolio domain currently preserves exact unscaled Decimal quantities, prices, fees, and lot allocation facts. The ledger posts integer minor units. A settlement coordinator must not independently round journal values while leaving portfolio lot history at economically different values.
+Trade executions carry an `accounting_precision_version`:
 
-This step introduces reusable conversion/allocation primitives without changing existing lot behavior.
+- **Version 1** preserves prior exact-Decimal lot calculations and is assigned to historical rows by migration default. Rebuilds retain that policy.
+- **Version 2** is used for new executions. It receives the immutable minor-unit exponent from the currency-definition snapshot attached to the execution.
 
-## Currency exponent source
+The version is persisted on the immutable execution row and included in audit metadata. It is not user-selectable.
 
-- Every call receives the integer minor-unit exponent captured by the trade's immutable currency-definition snapshot.
-- The helper does not query the current ISO registry, resolve by display name, or substitute a newer currency definition.
-- Exponents are validated as integers from 0 through 9. The persisted currency registry remains authoritative for which exponents are valid for a real trade.
+## Version 2 rules
 
-## Conversion policy
+- Acquisition basis is `quantity × unit_price + fee`, rounded once to the snapshot currency scale using `ROUND_HALF_UP`.
+- SELL gross consideration and sale fee are each rounded once to currency scale.
+- A sale fee greater than rounded gross proceeds is rejected before lot mutation.
+- Rounded gross proceeds and fees are apportioned across consumed lots by quantity weights.
+- Total disposed cost basis is rounded once, then apportioned across consumed lots by positive planned basis weights.
+- Allocation keys are stable lot UUID strings sorted lexically. Integer minor-unit residuals go to the final stable key.
+- Net proceeds and realized gain/loss are derived from allocated minor-unit amounts, so aggregate allocations reconcile exactly to rounded execution totals.
 
-- Monetary values must be finite `Decimal` instances; booleans and binary floats are rejected.
-- Final currency amounts are quantized once using `ROUND_HALF_UP`.
-- Conversion produces exact integer minor units.
-- Both directions enforce the ledger's signed 38-digit minor-unit magnitude bound.
-- The helper does not decide which intermediate business values should be rounded. That point must be explicit in the lot/settlement integration.
+## Compatibility and boundary
 
-## Deterministic allocation policy
+Version 1 executions rebuild with legacy exact-Decimal behavior. New version 2 executions use currency-scale amounts. This avoids retroactively changing historical lot facts when the code is upgraded.
 
-`allocate_minor_units(total, weighted_keys)` apportions a non-negative integer total across positive Decimal weights:
-
-1. Keys are unique, non-empty stable identifiers (the settlement integration will use lot UUID strings).
-2. Entries are sorted lexically by key, independent of input iteration order.
-3. Each entry except the final key receives its proportional share rounded down to an integer.
-4. The final key receives the exact remaining minor units.
-5. The resulting allocations always sum exactly to the requested total.
-
-This avoids losing or creating minor units through independently rounded disposal rows. The final residual recipient is deterministic, not whichever row happened to arrive last from a database query.
-
-## Explicit integration work still required
-
-- Add the immutable currency-definition exponent to the domain execution context without re-resolving a current registry record.
-- Determine and document rounding points for gross consideration, fees, net proceeds, acquisition basis, and disposal basis.
-- Quantize acquisition lot basis once and ensure remaining basis after partial disposal is derived consistently.
-- For multi-lot SELLs, allocate rounded total gross proceeds, sale fee, and cost basis to stable lot UUIDs; recompute per-allocation realized result and verify aggregate gain/loss equals the journal result exactly.
-- Persist the same rounded Decimal values that correspond to the integer minor-unit journal amounts.
-- Add replay, partial-lot, residual, multi-currency exponent, and PostgreSQL persistence tests before implementing the coordinator.
-
-## Boundary
-
-This PR adds a pure helper and its unit tests only. It does not modify existing lot calculations, database schema, trade execution persistence, journal posting, cash sufficiency, API routes, brokerage connections, or cash movement. The helper is not yet sufficient to authorize settlement.
+No cash journal, settlement coordinator, brokerage cash sufficiency enforcement, trade API, broker connection, or cash movement is included. PostgreSQL tests for multi-lot residual allocation, partial disposals, replay, and historical v1 rebuild stability must pass before coordinator implementation.
