@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 from sqlalchemy import CheckConstraint, ForeignKeyConstraint, UniqueConstraint
 
 from app.persistence.settlement_models import PortfolioLedgerAccountMappingModel
