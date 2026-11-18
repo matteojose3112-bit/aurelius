@@ -67,10 +67,11 @@ def upgrade():
         ["owner_id", "portfolio_id"],
     )
 
-    # Composite FKs enforce owner and currency equality. This trigger enforces
-    # account role types and OPEN status at mapping creation/update time.
-    op.execute(
-        """
+    # Composite FKs enforce owner and currency equality. PostgreSQL additionally
+    # enforces account role types and OPEN status at mapping creation/update time.
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute(
+            """
         CREATE FUNCTION aurelius_validate_portfolio_ledger_account_mapping()
         RETURNS trigger AS $$
         DECLARE
@@ -135,22 +136,23 @@ def upgrade():
         END;
         $$ LANGUAGE plpgsql
         """
-    )
-    op.execute(
-        """
+        )
+        op.execute(
+            """
         CREATE TRIGGER trg_portfolio_ledger_mapping_validate
         BEFORE INSERT OR UPDATE ON portfolio_ledger_account_mappings
         FOR EACH ROW EXECUTE FUNCTION aurelius_validate_portfolio_ledger_account_mapping()
         """
-    )
+        )
 
 
 def downgrade():
-    op.execute(
-        "DROP TRIGGER IF EXISTS trg_portfolio_ledger_mapping_validate "
-        "ON portfolio_ledger_account_mappings"
-    )
-    op.execute("DROP FUNCTION IF EXISTS aurelius_validate_portfolio_ledger_account_mapping()")
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute(
+            "DROP TRIGGER IF EXISTS trg_portfolio_ledger_mapping_validate "
+            "ON portfolio_ledger_account_mappings"
+        )
+        op.execute("DROP FUNCTION IF EXISTS aurelius_validate_portfolio_ledger_account_mapping()")
     op.drop_index(
         "ix_portfolio_ledger_mapping_owner_portfolio",
         table_name="portfolio_ledger_account_mappings",
