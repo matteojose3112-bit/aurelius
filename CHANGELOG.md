@@ -534,5 +534,5 @@ All notable project changes are documented here.
 
 ### Boundary
 - Historical v1 executions retain their prior exact-Decimal rebuild semantics; no historical lot facts are rewritten.
-- Broader PostgreSQL tests for multi-lot residuals, partial disposals, and precision-version replay remain required.
+- CI run #495 passed: 170 backend tests passed, 49 skipped in the SQLite suite, 49 PostgreSQL 16 integration tests passed, and frontend tests/build passed. Additional multi-lot partial-disposal and historical v1 replay stress cases remain follow-up coverage.
 - No cash journal, settlement coordinator, production migration, broker integration, or cash movement is included.
