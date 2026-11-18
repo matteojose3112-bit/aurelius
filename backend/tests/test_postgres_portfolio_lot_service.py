@@ -200,3 +200,22 @@ def test_service_serializes_competing_oversells(pg_factory):
             )
         ).all()
         assert len(rows) == 1
+
+
+def test_service_persists_currency_scale_and_precision_policy_version(pg_factory):
+    owner_id, account, instrument, portfolio = make_context(pg_factory)
+    trade = make_trade(
+        portfolio, account, instrument, side="buy",
+        quantity="1", price="1.005", fee="0.004",
+    )
+    result = apply_portfolio_execution(pg_factory, owner_id, owner_id, trade)
+    assert result.position.remaining_cost_basis == Decimal("1.01")
+    with pg_factory() as session:
+        execution_row = session.get(TradeExecutionModel, trade.execution_id)
+        assert execution_row.accounting_precision_version == 2
+        lot = session.scalar(
+            select(PortfolioLotModel).where(
+                PortfolioLotModel.opened_by_execution_id == trade.execution_id
+            )
+        )
+        assert Decimal(lot.original_cost) == Decimal("1.01")

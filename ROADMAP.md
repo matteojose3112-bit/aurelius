@@ -1,6 +1,6 @@
 # Aurelius Roadmap — FinTrack Transformation
 
-Last updated: 2026-11-17
+Last updated: 2026-11-18
 
 ## Product direction
 
@@ -522,7 +522,9 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [x] Document proposed BUY/SELL cash-flow accounting, fee treatment, trade-date assumption, partial-fill identity, realized gain/loss, cash sufficiency, and cross-domain transaction/idempotency requirements (see docs/architecture/FOUNDATION_0.6_TRADE_SETTLEMENT_ACCOUNTING.md).
 - [x] Add owner-scoped portfolio-to-ledger mapping persistence with composite owner/currency constraints, distinct account roles, and PostgreSQL role/status validation (see docs/architecture/FOUNDATION_0.6_SETTLEMENT_ACCOUNT_MAPPING.md).
 - [x] Add a caller-owned PostgreSQL mapping resolver that locks the portfolio, mapping, and four ledger accounts in deterministic order and revalidates use-time status/type/owner/currency.
-- [ ] Implement shared currency-scale rounding/reconciliation between exact Decimal lot facts and integer minor-unit journal postings.
+- [x] Add pure shared currency-scale conversion and deterministic minor-unit residual-allocation primitives with explicit immutable exponent input, ROUND_HALF_UP, and the ledger 38-digit bound.
+- [x] Integrate the immutable currency exponent into new lot-engine executions with deterministic multi-lot disposal allocation; preserve historical executions under precision-policy v1.
+- [ ] Complete PostgreSQL validation for multi-lot residuals, partial disposals, precision-version replay, and historical v1 rebuild stability.
 - [ ] Implement one transaction coordinator for trade execution, lot facts, cash journals, and audit/idempotency records.
 - [ ] Add cross-domain PostgreSQL integration tests for successful settlement, duplicate replay, rollback injection, cash sufficiency races, and concurrent fills.
 - [ ] Only after those gates pass, design read-only portfolio APIs and valuation/FX reporting.

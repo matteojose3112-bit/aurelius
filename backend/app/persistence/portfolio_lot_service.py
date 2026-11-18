@@ -91,7 +91,7 @@ def _request_hash(
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _to_domain(row: TradeExecutionModel, currency_code: str) -> TradeExecution:
+def _to_domain(row: TradeExecutionModel, currency_code: str, currency_exponent: int) -> TradeExecution:
     return TradeExecution(
         execution_id=row.id,
         portfolio_id=row.portfolio_id,
@@ -104,6 +104,7 @@ def _to_domain(row: TradeExecutionModel, currency_code: str) -> TradeExecution:
         fee=Decimal(row.fee),
         executed_at=row.executed_at,
         source=row.source,
+        currency_minor_unit_exponent=(currency_exponent if row.accounting_precision_version >= 2 else None),
     )
 
 
@@ -115,6 +116,7 @@ def _rebuild_book(
     instrument_id: UUID,
     currency_definition_id: UUID,
     currency_code: str,
+    currency_exponent: int,
 ) -> tuple[PortfolioLotBook, dict[UUID, TradeApplication], list[TradeExecutionModel]]:
     rows = session.scalars(
         select(TradeExecutionModel)
@@ -131,7 +133,7 @@ def _rebuild_book(
     book = PortfolioLotBook()
     applications: dict[UUID, TradeApplication] = {}
     for row in rows:
-        domain_execution = _to_domain(row, currency_code)
+        domain_execution = _to_domain(row, currency_code, currency_exponent)
         method = CostBasisMethod(row.cost_basis_method)
         application = book.apply(
             domain_execution,
@@ -250,6 +252,9 @@ def apply_portfolio_execution_in_session(
                 "quote currency is not an eligible current cash currency"
             )
 
+    if currency.minor_unit_exponent is None:
+        raise PortfolioScopeError("quote currency snapshot has no minor-unit exponent")
+
     lock_values = {
         "owner_id": owner_id,
         "portfolio_id": execution.portfolio_id,
@@ -293,6 +298,7 @@ def apply_portfolio_execution_in_session(
         execution.instrument_id,
         currency.id,
         execution.quote_currency_code,
+        currency.minor_unit_exponent,
     )
 
     if existing is not None:
@@ -306,8 +312,12 @@ def apply_portfolio_execution_in_session(
                 "execution timestamp is not later than the latest recorded fill; use the explicit rebuild workflow"
             )
 
-        application = book.apply(
+        precision_execution = replace(
             execution,
+            currency_minor_unit_exponent=currency.minor_unit_exponent,
+        )
+        application = book.apply(
+            precision_execution,
             cost_basis_method=cost_basis_method,
             specific_lot_id=specific_lot_id,
         )
@@ -327,6 +337,7 @@ def apply_portfolio_execution_in_session(
             cost_basis_method=cost_basis_method.value,
             specific_lot_id=specific_lot_id,
             request_hash=request_hash,
+            accounting_precision_version=2,
             created_by=actor_id,
         )
         session.add(row)
@@ -391,6 +402,8 @@ def apply_portfolio_execution_in_session(
                     "quote_currency_code": execution.quote_currency_code,
                     "fee": str(execution.fee),
                     "cost_basis_method": cost_basis_method.value,
+                    "accounting_precision_version": 2,
+                    "currency_minor_unit_exponent": currency.minor_unit_exponent,
                 },
             )
         )

@@ -506,3 +506,33 @@ All notable project changes are documented here.
 
 ### Boundary
 - The resolver performs no writes and never commits, rolls back, closes, or retries the caller's Session. Trade settlement and journal posting remain unimplemented.
+
+
+## Unreleased — Foundation 0.6 currency-scale allocation primitives — 2026-11-18
+
+### Added
+- Added pure Decimal-to-minor-unit conversion using an explicitly supplied currency exponent and ROUND_HALF_UP.
+- Added exact conversion back from integer minor units and a 38-digit ledger bound.
+- Added deterministic weighted minor-unit allocation: stable key ordering, floor allocation, and exact final residual assignment.
+- Added unit coverage for zero-, two-, and three-decimal currencies, negative amounts, float/non-finite rejection, overflow, and input-order-independent residual allocation.
+
+### Boundary
+- The primitive deliberately does not look up a current currency registry definition; the caller must supply the immutable exponent snapshot captured for the trade.
+- Existing portfolio lot/disposal facts are not yet quantized through this helper. Snapshot propagation and lot-engine integration remain required before settlement coordination.
+- No trade coordinator, journal posting, API, broker integration, or cash movement is included.
+
+
+## Unreleased — Foundation 0.6 lot precision integration — 2026-11-18
+
+### Added
+- Added accounting precision policy versioning to immutable trade executions. Existing rows default to v1; new fills use v2.
+- Integrated the immutable currency-definition minor-unit exponent into new lot-engine executions.
+- Quantized acquisition lot basis to currency scale using ROUND_HALF_UP.
+- Allocated SELL gross proceeds, fees, and aggregate cost basis across disposal lots using stable lot identifiers and exact residual assignment.
+- Rejected sale fees exceeding rounded gross proceeds before lot mutation.
+- Added domain and PostgreSQL service tests for currency-scale acquisition basis and allocation behavior.
+
+### Boundary
+- Historical v1 executions retain their prior exact-Decimal rebuild semantics; no historical lot facts are rewritten.
+- CI run #495 passed: 170 backend tests passed, 49 skipped in the SQLite suite, 49 PostgreSQL 16 integration tests passed, and frontend tests/build passed. Additional multi-lot partial-disposal and historical v1 replay stress cases remain follow-up coverage.
+- No cash journal, settlement coordinator, production migration, broker integration, or cash movement is included.

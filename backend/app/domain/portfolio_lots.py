@@ -13,6 +13,12 @@ from enum import Enum
 from typing import Iterable
 from uuid import UUID, NAMESPACE_URL, uuid5
 
+from app.domain.portfolio_money import (
+    allocate_minor_units,
+    from_minor_units,
+    to_minor_units,
+)
+
 
 class CostBasisMethod(str, Enum):
     FIFO = "fifo"
@@ -42,6 +48,7 @@ class TradeExecution:
     fee: Decimal
     executed_at: datetime
     source: str
+    currency_minor_unit_exponent: int | None = None
 
     def __post_init__(self) -> None:
         for field in ("execution_id", "portfolio_id", "account_id", "instrument_id"):
@@ -67,6 +74,11 @@ class TradeExecution:
             raise ValueError("executed_at must be timezone-aware")
         if not self.source.strip():
             raise ValueError("trade source is required")
+        if self.currency_minor_unit_exponent is not None:
+            if isinstance(self.currency_minor_unit_exponent, bool) or not isinstance(self.currency_minor_unit_exponent, int):
+                raise TypeError("currency_minor_unit_exponent must be an integer")
+            if not 0 <= self.currency_minor_unit_exponent <= 9:
+                raise ValueError("currency_minor_unit_exponent must be between 0 and 9")
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,7 +147,7 @@ def _fingerprint(execution: TradeExecution) -> tuple[object, ...]:
         execution.portfolio_id, execution.account_id, execution.instrument_id,
         execution.side, execution.quantity, execution.unit_price,
         execution.quote_currency_code, execution.fee, execution.executed_at,
-        execution.source,
+        execution.source, execution.currency_minor_unit_exponent,
     )
 
 
@@ -181,6 +193,11 @@ class PortfolioLotBook:
 
     def _buy(self, execution: TradeExecution) -> TradeApplication:
         total_cost = execution.quantity * execution.unit_price + execution.fee
+        if execution.currency_minor_unit_exponent is not None:
+            total_cost = from_minor_units(
+                to_minor_units(total_cost, execution.currency_minor_unit_exponent),
+                execution.currency_minor_unit_exponent,
+            )
         lot_id = uuid5(NAMESPACE_URL, f"aurelius:portfolio-lot:{execution.execution_id}")
         lot = TaxLot(
             lot_id=lot_id,
@@ -240,30 +257,68 @@ class PortfolioLotBook:
                 planned.append((lot, take, basis))
                 remaining_to_sell -= take
 
-            gross_total = execution.quantity * execution.unit_price
-            allocated_fee_total = Decimal("0")
             allocations: list[DisposalAllocation] = []
-            for index, (lot, quantity, basis) in enumerate(planned):
-                if index == len(planned) - 1:
-                    sale_fee = execution.fee - allocated_fee_total
-                else:
-                    sale_fee = execution.fee * quantity / execution.quantity
-                    allocated_fee_total += sale_fee
-                gross = quantity * execution.unit_price
-                net = gross - sale_fee
-                allocations.append(
-                    DisposalAllocation(
-                        lot_id=lot.lot_id,
-                        quantity=quantity,
-                        cost_basis=basis,
-                        gross_proceeds=gross,
-                        allocated_sale_fee=sale_fee,
-                        net_proceeds=net,
-                        realized_gain_loss=net - basis,
+            if execution.currency_minor_unit_exponent is None:
+                # Compatibility path for in-memory callers that have not yet
+                # supplied a currency snapshot. Persisted executions use v2.
+                allocated_fee_total = Decimal("0")
+                for index, (lot, quantity, basis) in enumerate(planned):
+                    if index == len(planned) - 1:
+                        sale_fee = execution.fee - allocated_fee_total
+                    else:
+                        sale_fee = execution.fee * quantity / execution.quantity
+                        allocated_fee_total += sale_fee
+                    gross = quantity * execution.unit_price
+                    net = gross - sale_fee
+                    allocations.append(
+                        DisposalAllocation(
+                            lot_id=lot.lot_id, quantity=quantity, cost_basis=basis,
+                            gross_proceeds=gross, allocated_sale_fee=sale_fee,
+                            net_proceeds=net, realized_gain_loss=net - basis,
+                        )
                     )
+            else:
+                exponent = execution.currency_minor_unit_exponent
+                gross_total_minor = to_minor_units(
+                    execution.quantity * execution.unit_price, exponent
                 )
+                fee_total_minor = to_minor_units(execution.fee, exponent)
+                if fee_total_minor > gross_total_minor:
+                    raise PortfolioAccountingError("sale fee cannot exceed gross proceeds")
+                quantity_weights = [
+                    (str(lot.lot_id), quantity) for lot, quantity, _ in planned
+                ]
+                gross_allocations = allocate_minor_units(gross_total_minor, quantity_weights)
+                fee_allocations = allocate_minor_units(fee_total_minor, quantity_weights)
+                positive_basis_weights = [
+                    (str(lot.lot_id), basis) for lot, _, basis in planned if basis > 0
+                ]
+                basis_total_minor = to_minor_units(
+                    sum((basis for _, _, basis in planned), Decimal("0")), exponent
+                )
+                if basis_total_minor and not positive_basis_weights:
+                    raise PortfolioAccountingError("positive cost basis has no positive allocation weight")
+                basis_allocations = (
+                    allocate_minor_units(basis_total_minor, positive_basis_weights)
+                    if basis_total_minor else {}
+                )
+                for lot, quantity, _ in planned:
+                    key = str(lot.lot_id)
+                    gross = from_minor_units(gross_allocations[key], exponent)
+                    sale_fee = from_minor_units(fee_allocations[key], exponent)
+                    basis = from_minor_units(basis_allocations.get(key, 0), exponent)
+                    net = gross - sale_fee
+                    allocations.append(
+                        DisposalAllocation(
+                            lot_id=lot.lot_id, quantity=quantity, cost_basis=basis,
+                            gross_proceeds=gross, allocated_sale_fee=sale_fee,
+                            net_proceeds=net, realized_gain_loss=net - basis,
+                        )
+                    )
 
-            for lot, quantity, basis in planned:
+            allocation_by_lot = {item.lot_id: item for item in allocations}
+            for lot, quantity, _ in planned:
+                basis = allocation_by_lot[lot.lot_id].cost_basis
                 self._lots[lot.lot_id] = replace(
                     lot,
                     remaining_quantity=lot.remaining_quantity - quantity,
