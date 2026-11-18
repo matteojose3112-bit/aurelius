@@ -167,3 +167,78 @@ def test_trade_requires_timezone_aware_execution_time():
             unit_price=Decimal("1"), quote_currency_code="USD", fee=Decimal("0"),
             executed_at=datetime(2026, 1, 1), source="unit-test",
         )
+
+
+def test_currency_precision_version_rounds_acquisition_basis_and_disposal_allocations():
+    book = PortfolioLotBook()
+    first = TradeExecution(
+        execution_id=uuid4(), portfolio_id=PORTFOLIO, account_id=ACCOUNT,
+        instrument_id=INSTRUMENT, side=TradeSide.BUY, quantity=Decimal("1"),
+        unit_price=Decimal("1.005"), quote_currency_code="USD", fee=Decimal("0.004"),
+        executed_at=T0, source="unit-test", currency_minor_unit_exponent=2,
+    )
+    book.apply(first)
+    assert book.lots[0].original_cost == Decimal("1.01")
+
+    second = TradeExecution(
+        execution_id=uuid4(), portfolio_id=PORTFOLIO, account_id=ACCOUNT,
+        instrument_id=INSTRUMENT, side=TradeSide.BUY, quantity=Decimal("1"),
+        unit_price=Decimal("2.005"), quote_currency_code="USD", fee=Decimal("0"),
+        executed_at=T0 + timedelta(days=1), source="unit-test",
+        currency_minor_unit_exponent=2,
+    )
+    book.apply(second)
+
+    sale = TradeExecution(
+        execution_id=uuid4(), portfolio_id=PORTFOLIO, account_id=ACCOUNT,
+        instrument_id=INSTRUMENT, side=TradeSide.SELL, quantity=Decimal("2"),
+        unit_price=Decimal("2.005"), quote_currency_code="USD", fee=Decimal("0.015"),
+        executed_at=T0 + timedelta(days=2), source="unit-test",
+        currency_minor_unit_exponent=2,
+    )
+    result = book.apply(sale)
+    assert sum((x.gross_proceeds for x in result.allocations), Decimal("0")) == Decimal("4.01")
+    assert sum((x.allocated_sale_fee for x in result.allocations), Decimal("0")) == Decimal("0.02")
+    assert sum((x.cost_basis for x in result.allocations), Decimal("0")) == Decimal("3.02")
+    assert result.realized_gain_loss == Decimal("0.97")
+    assert all(x.cost_basis == x.cost_basis.quantize(Decimal("0.01")) for x in result.allocations)
+    assert book.position(PORTFOLIO, ACCOUNT, INSTRUMENT, "USD").remaining_cost_basis == Decimal("0.00")
+
+
+def test_currency_precision_supports_zero_and_three_decimal_exponents():
+    for exponent, price, expected in [
+        (0, "12.5", Decimal("13")),
+        (3, "1.2345", Decimal("1.235")),
+    ]:
+        book = PortfolioLotBook()
+        execution = TradeExecution(
+            execution_id=uuid4(), portfolio_id=PORTFOLIO, account_id=ACCOUNT,
+            instrument_id=INSTRUMENT, side=TradeSide.BUY, quantity=Decimal("1"),
+            unit_price=Decimal(price), quote_currency_code="TST", fee=Decimal("0"),
+            executed_at=T0, source="unit-test",
+            currency_minor_unit_exponent=exponent,
+        )
+        book.apply(execution)
+        assert book.lots[0].original_cost == expected
+
+
+def test_currency_precision_rejects_sale_fee_above_gross_without_mutation():
+    book = PortfolioLotBook()
+    buy = TradeExecution(
+        execution_id=uuid4(), portfolio_id=PORTFOLIO, account_id=ACCOUNT,
+        instrument_id=INSTRUMENT, side=TradeSide.BUY, quantity=Decimal("1"),
+        unit_price=Decimal("1"), quote_currency_code="USD", fee=Decimal("0"),
+        executed_at=T0, source="unit-test", currency_minor_unit_exponent=2,
+    )
+    book.apply(buy)
+    sell = TradeExecution(
+        execution_id=uuid4(), portfolio_id=PORTFOLIO, account_id=ACCOUNT,
+        instrument_id=INSTRUMENT, side=TradeSide.SELL, quantity=Decimal("1"),
+        unit_price=Decimal("1"), quote_currency_code="USD", fee=Decimal("1.01"),
+        executed_at=T0 + timedelta(days=1), source="unit-test",
+        currency_minor_unit_exponent=2,
+    )
+    before = book.position(PORTFOLIO, ACCOUNT, INSTRUMENT, "USD")
+    with pytest.raises(PortfolioAccountingError, match="fee cannot exceed"):
+        book.apply(sell)
+    assert book.position(PORTFOLIO, ACCOUNT, INSTRUMENT, "USD") == before
