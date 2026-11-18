@@ -164,14 +164,18 @@ def test_postgres_resolver_returns_locked_roles_and_rejects_closed_accounts(pg_s
 
 def test_postgres_resolver_requires_a_mapping_and_caller_transaction(pg_session):
     owner, usd, portfolio, accounts = make_context(pg_session)
+    owner_id = owner.id
+    portfolio_id = portfolio.id
+    cash_account_id = accounts["cash"].id
+    currency_definition_id = usd.id
     pg_session.commit()
     with pytest.raises(RuntimeError, match="active transaction"):
         resolve_portfolio_ledger_mapping_in_session(
-            pg_session, owner.id, portfolio.id, accounts["cash"].id, usd.id
+            pg_session, owner_id, portfolio_id, cash_account_id, currency_definition_id
         )
 
     with pg_session.begin():
         with pytest.raises(SettlementMappingNotFound):
             resolve_portfolio_ledger_mapping_in_session(
-                pg_session, owner.id, portfolio.id, accounts["cash"].id, usd.id
+                pg_session, owner_id, portfolio_id, cash_account_id, currency_definition_id
             )
