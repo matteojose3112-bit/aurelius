@@ -13,6 +13,11 @@ from app.persistence.currency_registry_seed import seed_currency_registry
 from app.persistence.models import CurrencyDefinitionModel, FinancialAccountModel
 from app.persistence.portfolio_models import InvestmentPortfolioModel
 from app.persistence.settlement_models import PortfolioLedgerAccountMappingModel
+from app.persistence.settlement_mapping_service import (
+    SettlementMappingInvalid,
+    SettlementMappingNotFound,
+    resolve_portfolio_ledger_mapping_in_session,
+)
 
 
 POSTGRES_TEST_URL = os.getenv("POSTGRES_TEST_URL")
@@ -129,3 +134,48 @@ def test_postgres_rejects_wrong_account_role_and_cross_owner_mapping(pg_session)
     with pytest.raises(IntegrityError):
         pg_session.commit()
     pg_session.rollback()
+
+
+
+def test_postgres_resolver_returns_locked_roles_and_rejects_closed_accounts(pg_session):
+    owner, usd, portfolio, accounts = make_context(pg_session)
+    mapping = mapping_for(owner, usd, portfolio, accounts)
+    pg_session.add(mapping)
+    pg_session.commit()
+
+    with pg_session.begin():
+        resolved = resolve_portfolio_ledger_mapping_in_session(
+            pg_session, owner.id, portfolio.id, accounts["cash"].id, usd.id
+        )
+        assert resolved.mapping.id == mapping.id
+        assert resolved.cash_account.id == accounts["cash"].id
+        assert resolved.investment_control_account.id == accounts["investment"].id
+        assert resolved.realized_gain_account.id == accounts["gain"].id
+        assert resolved.realized_loss_account.id == accounts["loss"].id
+
+    accounts["gain"].status = "CLOSED"
+    pg_session.commit()
+    with pg_session.begin():
+        with pytest.raises(SettlementMappingInvalid, match="gain account is closed"):
+            resolve_portfolio_ledger_mapping_in_session(
+                pg_session, owner.id, portfolio.id, accounts["cash"].id, usd.id
+            )
+
+
+def test_postgres_resolver_requires_a_mapping_and_caller_transaction(pg_session):
+    owner, usd, portfolio, accounts = make_context(pg_session)
+    owner_id = owner.id
+    portfolio_id = portfolio.id
+    cash_account_id = accounts["cash"].id
+    currency_definition_id = usd.id
+    pg_session.commit()
+    with pytest.raises(RuntimeError, match="active transaction"):
+        resolve_portfolio_ledger_mapping_in_session(
+            pg_session, owner_id, portfolio_id, cash_account_id, currency_definition_id
+        )
+
+    with pg_session.begin():
+        with pytest.raises(SettlementMappingNotFound):
+            resolve_portfolio_ledger_mapping_in_session(
+                pg_session, owner_id, portfolio_id, cash_account_id, currency_definition_id
+            )

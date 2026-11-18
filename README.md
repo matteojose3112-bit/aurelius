@@ -449,3 +449,6 @@ Added the owner-scoped portfolio_ledger_account_mappings persistence model and A
 This is a schema foundation only: there is no mapping API, automatic account selection, trade coordinator, journal posting, or cash movement. The coordinator must re-check account status at use time. Shared lot/money rounding and reconciliation remains a separate blocker.
 
 Validation on the draft mapping PR head: **154 backend tests passed** (46 PostgreSQL-only cases skipped in SQLite mode), **46 PostgreSQL 16 integration tests passed**, and frontend tests/build passed. The PostgreSQL job applies migration 0006 and runs the new mapping integration tests. No production migration was run.
+
+
+The mapping resolver now exposes a caller-owned-session operation that locks the active portfolio, the exact mapping, and all four ledger accounts in deterministic UUID order. It revalidates ownership, currency, account roles, and OPEN status at use time; it does not commit or close the caller's transaction.
