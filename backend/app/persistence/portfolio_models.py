@@ -113,6 +113,7 @@ class TradeExecutionModel(Base):
     cost_basis_method: Mapped[str] = mapped_column(String(16), nullable=False, default="fifo")
     specific_lot_id: Mapped[object | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    accounting_precision_version: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1, server_default="1")
     created_by: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
