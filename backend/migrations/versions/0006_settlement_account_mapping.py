@@ -14,75 +14,42 @@ def upgrade():
     op.create_table(
         "portfolio_ledger_account_mappings",
         sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True),
-        sa.Column(
-            "owner_id",
-            sa.Integer(),
-            sa.ForeignKey("users.id", ondelete="RESTRICT"),
-            nullable=False,
-        ),
+        sa.Column("owner_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False),
         sa.Column("portfolio_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("cash_account_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("investment_control_account_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("realized_gain_account_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("realized_loss_account_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("currency_definition_id", sa.Uuid(as_uuid=True), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.func.now(),
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.UniqueConstraint(
-            "portfolio_id",
-            "cash_account_id",
-            "currency_definition_id",
+            "portfolio_id", "cash_account_id", "currency_definition_id",
             name="uq_portfolio_ledger_mapping_scope",
         ),
         sa.ForeignKeyConstraint(
             ["portfolio_id", "owner_id"],
             ["investment_portfolios.id", "investment_portfolios.owner_id"],
-            ondelete="RESTRICT",
-            name="fk_portfolio_ledger_mapping_portfolio_owner",
+            ondelete="RESTRICT", name="fk_portfolio_ledger_mapping_portfolio_owner",
         ),
         sa.ForeignKeyConstraint(
             ["cash_account_id", "owner_id", "currency_definition_id"],
-            [
-                "financial_accounts.id",
-                "financial_accounts.owner_id",
-                "financial_accounts.currency_definition_id",
-            ],
-            ondelete="RESTRICT",
-            name="fk_portfolio_ledger_mapping_cash_owner_currency",
+            ["financial_accounts.id", "financial_accounts.owner_id", "financial_accounts.currency_definition_id"],
+            ondelete="RESTRICT", name="fk_portfolio_ledger_mapping_cash_owner_currency",
         ),
         sa.ForeignKeyConstraint(
             ["investment_control_account_id", "owner_id", "currency_definition_id"],
-            [
-                "financial_accounts.id",
-                "financial_accounts.owner_id",
-                "financial_accounts.currency_definition_id",
-            ],
-            ondelete="RESTRICT",
-            name="fk_portfolio_ledger_mapping_investment_owner_currency",
+            ["financial_accounts.id", "financial_accounts.owner_id", "financial_accounts.currency_definition_id"],
+            ondelete="RESTRICT", name="fk_portfolio_ledger_mapping_investment_owner_currency",
         ),
         sa.ForeignKeyConstraint(
             ["realized_gain_account_id", "owner_id", "currency_definition_id"],
-            [
-                "financial_accounts.id",
-                "financial_accounts.owner_id",
-                "financial_accounts.currency_definition_id",
-            ],
-            ondelete="RESTRICT",
-            name="fk_portfolio_ledger_mapping_gain_owner_currency",
+            ["financial_accounts.id", "financial_accounts.owner_id", "financial_accounts.currency_definition_id"],
+            ondelete="RESTRICT", name="fk_portfolio_ledger_mapping_gain_owner_currency",
         ),
         sa.ForeignKeyConstraint(
             ["realized_loss_account_id", "owner_id", "currency_definition_id"],
-            [
-                "financial_accounts.id",
-                "financial_accounts.owner_id",
-                "financial_accounts.currency_definition_id",
-            ],
-            ondelete="RESTRICT",
-            name="fk_portfolio_ledger_mapping_loss_owner_currency",
+            ["financial_accounts.id", "financial_accounts.owner_id", "financial_accounts.currency_definition_id"],
+            ondelete="RESTRICT", name="fk_portfolio_ledger_mapping_loss_owner_currency",
         ),
         sa.CheckConstraint(
             "cash_account_id <> investment_control_account_id "
@@ -100,68 +67,66 @@ def upgrade():
         ["owner_id", "portfolio_id"],
     )
 
-    # Foreign keys enforce owner and currency equality. This trigger enforces
-    # the role-specific account classes and requires an active portfolio/open
-    # accounts when a mapping is first created or deliberately changed.
+    # Composite FKs enforce owner and currency equality. This trigger enforces
+    # account role types and OPEN status at mapping creation/update time.
     op.execute(
         """
         CREATE FUNCTION aurelius_validate_portfolio_ledger_account_mapping()
         RETURNS trigger AS $$
         DECLARE
-            portfolio_status text;
-            account_type text;
-            account_status text;
+            v_portfolio_status text;
+            v_account_type text;
+            v_account_status text;
         BEGIN
-            SELECT status INTO portfolio_status
+            SELECT status INTO v_portfolio_status
             FROM investment_portfolios
             WHERE id = NEW.portfolio_id AND owner_id = NEW.owner_id
             FOR KEY SHARE;
-
-            IF portfolio_status IS DISTINCT FROM 'ACTIVE' THEN
+            IF v_portfolio_status IS DISTINCT FROM 'ACTIVE' THEN
                 RAISE EXCEPTION 'portfolio ledger mapping requires an active owned portfolio'
                     USING ERRCODE = '23514';
             END IF;
 
-            SELECT account_type, status INTO account_type, account_status
-            FROM financial_accounts
-            WHERE id = NEW.cash_account_id
-              AND owner_id = NEW.owner_id
-              AND currency_definition_id = NEW.currency_definition_id
+            SELECT fa.account_type, fa.status INTO v_account_type, v_account_status
+            FROM financial_accounts AS fa
+            WHERE fa.id = NEW.cash_account_id
+              AND fa.owner_id = NEW.owner_id
+              AND fa.currency_definition_id = NEW.currency_definition_id
             FOR KEY SHARE;
-            IF account_type IS DISTINCT FROM 'ASSET' OR account_status IS DISTINCT FROM 'OPEN' THEN
+            IF v_account_type IS DISTINCT FROM 'ASSET' OR v_account_status IS DISTINCT FROM 'OPEN' THEN
                 RAISE EXCEPTION 'mapped brokerage cash account must be an open ASSET account'
                     USING ERRCODE = '23514';
             END IF;
 
-            SELECT account_type, status INTO account_type, account_status
-            FROM financial_accounts
-            WHERE id = NEW.investment_control_account_id
-              AND owner_id = NEW.owner_id
-              AND currency_definition_id = NEW.currency_definition_id
+            SELECT fa.account_type, fa.status INTO v_account_type, v_account_status
+            FROM financial_accounts AS fa
+            WHERE fa.id = NEW.investment_control_account_id
+              AND fa.owner_id = NEW.owner_id
+              AND fa.currency_definition_id = NEW.currency_definition_id
             FOR KEY SHARE;
-            IF account_type IS DISTINCT FROM 'ASSET' OR account_status IS DISTINCT FROM 'OPEN' THEN
+            IF v_account_type IS DISTINCT FROM 'ASSET' OR v_account_status IS DISTINCT FROM 'OPEN' THEN
                 RAISE EXCEPTION 'investment control account must be an open ASSET account'
                     USING ERRCODE = '23514';
             END IF;
 
-            SELECT account_type, status INTO account_type, account_status
-            FROM financial_accounts
-            WHERE id = NEW.realized_gain_account_id
-              AND owner_id = NEW.owner_id
-              AND currency_definition_id = NEW.currency_definition_id
+            SELECT fa.account_type, fa.status INTO v_account_type, v_account_status
+            FROM financial_accounts AS fa
+            WHERE fa.id = NEW.realized_gain_account_id
+              AND fa.owner_id = NEW.owner_id
+              AND fa.currency_definition_id = NEW.currency_definition_id
             FOR KEY SHARE;
-            IF account_type IS DISTINCT FROM 'INCOME' OR account_status IS DISTINCT FROM 'OPEN' THEN
+            IF v_account_type IS DISTINCT FROM 'INCOME' OR v_account_status IS DISTINCT FROM 'OPEN' THEN
                 RAISE EXCEPTION 'realized gain account must be an open INCOME account'
                     USING ERRCODE = '23514';
             END IF;
 
-            SELECT account_type, status INTO account_type, account_status
-            FROM financial_accounts
-            WHERE id = NEW.realized_loss_account_id
-              AND owner_id = NEW.owner_id
-              AND currency_definition_id = NEW.currency_definition_id
+            SELECT fa.account_type, fa.status INTO v_account_type, v_account_status
+            FROM financial_accounts AS fa
+            WHERE fa.id = NEW.realized_loss_account_id
+              AND fa.owner_id = NEW.owner_id
+              AND fa.currency_definition_id = NEW.currency_definition_id
             FOR KEY SHARE;
-            IF account_type IS DISTINCT FROM 'EXPENSE' OR account_status IS DISTINCT FROM 'OPEN' THEN
+            IF v_account_type IS DISTINCT FROM 'EXPENSE' OR v_account_status IS DISTINCT FROM 'OPEN' THEN
                 RAISE EXCEPTION 'realized loss account must be an open EXPENSE account'
                     USING ERRCODE = '23514';
             END IF;
@@ -175,8 +140,7 @@ def upgrade():
         """
         CREATE TRIGGER trg_portfolio_ledger_mapping_validate
         BEFORE INSERT OR UPDATE ON portfolio_ledger_account_mappings
-        FOR EACH ROW
-        EXECUTE FUNCTION aurelius_validate_portfolio_ledger_account_mapping()
+        FOR EACH ROW EXECUTE FUNCTION aurelius_validate_portfolio_ledger_account_mapping()
         """
     )
 
