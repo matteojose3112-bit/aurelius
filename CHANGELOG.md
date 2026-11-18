@@ -492,3 +492,6 @@ All notable project changes are documented here.
 
 ### Boundary
 - Persistence only. No mapping API, default account inference, coordinator, journal posting, cash sufficiency enforcement, broker integration, production migration, or cash movement is included. The coordinator must re-check account status at use time.
+
+### Validation
+- Draft PR CI on the final mapping branch head: 154 backend tests passed (46 PostgreSQL-only cases skipped in SQLite mode); 46 PostgreSQL 16 integration tests passed; frontend tests and build passed. PostgreSQL CI applied migration 0006 and exercised the mapping constraints and role trigger.
