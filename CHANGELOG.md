@@ -520,3 +520,19 @@ All notable project changes are documented here.
 - The primitive deliberately does not look up a current currency registry definition; the caller must supply the immutable exponent snapshot captured for the trade.
 - Existing portfolio lot/disposal facts are not yet quantized through this helper. Snapshot propagation and lot-engine integration remain required before settlement coordination.
 - No trade coordinator, journal posting, API, broker integration, or cash movement is included.
+
+
+## Unreleased — Foundation 0.6 lot precision integration — 2026-11-18
+
+### Added
+- Added accounting precision policy versioning to immutable trade executions. Existing rows default to v1; new fills use v2.
+- Integrated the immutable currency-definition minor-unit exponent into new lot-engine executions.
+- Quantized acquisition lot basis to currency scale using ROUND_HALF_UP.
+- Allocated SELL gross proceeds, fees, and aggregate cost basis across disposal lots using stable lot identifiers and exact residual assignment.
+- Rejected sale fees exceeding rounded gross proceeds before lot mutation.
+- Added domain and PostgreSQL service tests for currency-scale acquisition basis and allocation behavior.
+
+### Boundary
+- Historical v1 executions retain their prior exact-Decimal rebuild semantics; no historical lot facts are rewritten.
+- Broader PostgreSQL tests for multi-lot residuals, partial disposals, and precision-version replay remain required.
+- No cash journal, settlement coordinator, production migration, broker integration, or cash movement is included.
