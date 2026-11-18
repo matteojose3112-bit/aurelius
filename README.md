@@ -441,3 +441,9 @@ The two session-bound primitives are now available as building blocks; the actua
 The next milestone is documented in `docs/architecture/FOUNDATION_0.6_TRADE_SETTLEMENT_ACCOUNTING.md`. It defines proposed BUY/SELL journal mechanics, fee treatment, owner-scoped account mapping requirements, replay/transaction rules, cash-sufficiency controls, settlement-date assumptions, and the precision/rounding gate between exact lot decimals and integer minor-unit ledger postings.
 
 This is a design contract only. The account mapping and shared rounding policy do not yet exist, so the settlement coordinator is not implemented and no trade API, broker connection, order placement, or cash movement is enabled.
+
+## Foundation 0.6 — explicit settlement account mapping
+
+Added the owner-scoped portfolio_ledger_account_mappings persistence model and Alembic revision 0006. Each portfolio/brokerage-cash-account/currency scope now has explicit, distinct cash, investment-control, realized-gain, and realized-loss account references. Composite foreign keys enforce owner and exact currency-snapshot consistency; a PostgreSQL trigger validates account roles and OPEN status when mappings are created or changed. See docs/architecture/FOUNDATION_0.6_SETTLEMENT_ACCOUNT_MAPPING.md.
+
+This is a schema foundation only: there is no mapping API, automatic account selection, trade coordinator, journal posting, or cash movement. The coordinator must re-check account status at use time. Shared lot/money rounding and reconciliation remains a separate blocker.
