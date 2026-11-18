@@ -1,6 +1,6 @@
 # Foundation 0.6 — currency-scale integration into portfolio lots
 
-**Status:** Implemented behind an explicit accounting-policy version; PostgreSQL validation is pending.
+**Status:** Implemented behind an explicit accounting-policy version; CI run #495 passed. Additional historical replay and partial-disposal stress cases remain.
 
 ## Versioned compatibility
 
@@ -25,4 +25,4 @@ The version is persisted on the immutable execution row and included in audit me
 
 Version 1 executions rebuild with legacy exact-Decimal behavior. New version 2 executions use currency-scale amounts. This avoids retroactively changing historical lot facts when the code is upgraded.
 
-No cash journal, settlement coordinator, brokerage cash sufficiency enforcement, trade API, broker connection, or cash movement is included. PostgreSQL tests for multi-lot residual allocation, partial disposals, replay, and historical v1 rebuild stability must pass before coordinator implementation.
+No cash journal, settlement coordinator, brokerage cash sufficiency enforcement, trade API, broker connection, or cash movement is included. Before coordinator implementation, add broader PostgreSQL coverage for multi-lot partial-disposal stress cases and explicit historical v1 replay/rebuild stability.
