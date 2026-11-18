@@ -495,3 +495,14 @@ All notable project changes are documented here.
 
 ### Validation
 - Draft PR CI on the final mapping branch head: 154 backend tests passed (46 PostgreSQL-only cases skipped in SQLite mode); 46 PostgreSQL 16 integration tests passed; frontend tests and build passed. PostgreSQL CI applied migration 0006 and exercised the mapping constraints and role trigger.
+
+
+## Unreleased — Foundation 0.6 settlement mapping resolver — 2026-11-18
+
+### Added
+- Added resolve_portfolio_ledger_mapping_in_session, which requires an active caller-owned PostgreSQL transaction and resolves only the exact owner/portfolio/cash-account/currency mapping.
+- Added deterministic row locking (portfolio, mapping, then all financial accounts ordered by UUID) and use-time validation of portfolio status, account ownership, currency, role type, and OPEN status.
+- Added PostgreSQL integration coverage for successful role resolution, missing mappings, transaction ownership, and account closure after mapping creation.
+
+### Boundary
+- The resolver performs no writes and never commits, rolls back, closes, or retries the caller's Session. Trade settlement and journal posting remain unimplemented.
