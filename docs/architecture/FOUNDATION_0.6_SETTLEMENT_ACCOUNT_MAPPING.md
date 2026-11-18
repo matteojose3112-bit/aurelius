@@ -29,7 +29,7 @@ Alembic revision 0006_settlement_account_mapping adds the table and:
 - A check constraint prevents one account from being assigned multiple roles.
 - A PostgreSQL BEFORE INSERT OR UPDATE trigger requires an active portfolio and open accounts with the required role types (ASSET, ASSET, INCOME, EXPENSE).
 
-The trigger validates mapping creation/update. An account can be closed later, so the settlement coordinator must re-check that all four mapped accounts remain open immediately before posting, in the same transaction. It must also verify the mapping owner, portfolio, cash account, and currency match the execution.
+The trigger validates mapping creation/update. An account can be closed later, so settlement must re-check all four mapped accounts immediately before posting. The new resolve_portfolio_ledger_mapping_in_session operation performs this check in a caller-owned PostgreSQL transaction: it locks the active portfolio, exact mapping, then all four accounts in deterministic UUID order, and validates owner, currency, account type, and OPEN status. The caller retains transaction ownership.
 
 The exact currency-definition ID is intentional: it preserves the registry snapshot used by an execution. A new currency registry definition does not silently inherit an old mapping; a matching mapping must be explicitly established for that snapshot.
 
