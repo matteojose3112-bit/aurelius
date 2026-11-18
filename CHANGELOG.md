@@ -481,3 +481,17 @@ All notable project changes are documented here.
 ### Status and boundaries
 - Documentation/design only. The account mapping, shared rounding/reconciliation policy, and settlement coordinator are not implemented.
 - No trading API, brokerage connection, order placement, cash movement, production write, deployment, or infrastructure change was performed.
+
+## Unreleased — Foundation 0.6 settlement account mapping — 2026-11-18
+
+### Added
+- Added the owner-scoped portfolio_ledger_account_mappings model and Alembic revision 0006.
+- Enforced portfolio ownership, same-owner/same-currency account references, unique portfolio/cash/currency scope, and distinct ledger roles with database constraints.
+- Added a PostgreSQL trigger requiring an active portfolio and open cash/investment ASSET, realized-gain INCOME, and realized-loss EXPENSE accounts when a mapping is created or changed.
+- Added model-level and PostgreSQL integration tests for valid mappings, duplicate scopes, incorrect account roles, and cross-owner references.
+
+### Boundary
+- Persistence only. No mapping API, default account inference, coordinator, journal posting, cash sufficiency enforcement, broker integration, production migration, or cash movement is included. The coordinator must re-check account status at use time.
+
+### Validation
+- Draft PR CI on the final mapping branch head: 154 backend tests passed (46 PostgreSQL-only cases skipped in SQLite mode); 46 PostgreSQL 16 integration tests passed; frontend tests and build passed. PostgreSQL CI applied migration 0006 and exercised the mapping constraints and role trigger.

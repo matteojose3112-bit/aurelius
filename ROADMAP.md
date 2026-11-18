@@ -520,7 +520,8 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [x] Refactor ledger posting to expose a caller-session primitive while preserving the transaction-owning journal API.
 - [x] Prove the session-bound posting primitive participates in the caller's rollback boundary (journal, postings, audit, and idempotency all roll back together).
 - [x] Document proposed BUY/SELL cash-flow accounting, fee treatment, trade-date assumption, partial-fill identity, realized gain/loss, cash sufficiency, and cross-domain transaction/idempotency requirements (see docs/architecture/FOUNDATION_0.6_TRADE_SETTLEMENT_ACCOUNTING.md).
-- [ ] Add owner-scoped portfolio-to-ledger account mapping for brokerage cash, investment control, realized gain, and realized loss accounts.
+- [x] Add owner-scoped portfolio-to-ledger mapping persistence with composite owner/currency constraints, distinct account roles, and PostgreSQL role/status validation (see docs/architecture/FOUNDATION_0.6_SETTLEMENT_ACCOUNT_MAPPING.md).
+- [ ] Add settlement-service mapping resolution and use-time account/portfolio status checks inside the caller-owned transaction.
 - [ ] Implement shared currency-scale rounding/reconciliation between exact Decimal lot facts and integer minor-unit journal postings.
 - [ ] Implement one transaction coordinator for trade execution, lot facts, cash journals, and audit/idempotency records.
 - [ ] Add cross-domain PostgreSQL integration tests for successful settlement, duplicate replay, rollback injection, cash sufficiency races, and concurrent fills.
