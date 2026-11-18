@@ -452,3 +452,10 @@ Validation on the draft mapping PR head: **154 backend tests passed** (46 Postgr
 
 
 The mapping resolver now exposes a caller-owned-session operation that locks the active portfolio, the exact mapping, and all four ledger accounts in deterministic UUID order. It revalidates ownership, currency, account roles, and OPEN status at use time; it does not commit or close the caller's transaction.
+
+
+## Foundation 0.6 — currency-scale allocation primitives
+
+Added a pure domain module, `portfolio_money.py`, for exact Decimal-to-minor-unit conversion using an explicitly supplied currency exponent, `ROUND_HALF_UP`, the ledger's 38-digit minor-unit bound, and deterministic weighted residual allocation. The caller supplies the immutable currency exponent captured for the trade; this helper does not consult a mutable/current registry or infer a currency. Unit tests cover zero-, two-, and three-decimal scales, negative values, invalid inputs, overflow, and order-independent allocation.
+
+This is a tested primitive, not yet the lot-engine integration: existing portfolio lot facts still use unquantized Decimal allocation values. The next gate is to thread the immutable currency snapshot through execution and lot persistence, then reconcile each persisted lot/disposal amount to the exact minor-unit totals used by settlement. No coordinator or journal posting is included.
