@@ -2,7 +2,7 @@
 
 A lightweight CSV inspection and cleaning workspace built primarily with vanilla JavaScript.
 
-**Status:** Fresh rebuild in progress  
+**Status:** JavaScript MVP foundation; automated tests and production build passing in GitHub Actions  
 **Application:** CSV Studio  
 **Approach:** Browser-first, privacy-conscious, no backend required for the MVP.
 
@@ -22,6 +22,7 @@ A lightweight CSV inspection and cleaning workspace built primarily with vanilla
 - CSS3
 - Vite
 - Vitest
+- GitHub Actions
 
 ## Run locally
 
@@ -37,6 +38,10 @@ npm test
 npm run build
 ```
 
+## Continuous integration
+
+GitHub Actions automatically installs dependencies, runs the unit tests, and creates a production build for pushes to `main` and `rebuild/**` branches, as well as pull requests targeting `main`.
+
 ## Privacy
 
 CSV files are read locally in the browser. This project does not upload imported data to a server.
@@ -45,6 +50,9 @@ CSV files are read locally in the browser. This project does not upload imported
 
 ```text
 fintrack/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── index.html
 ├── src/
 │   ├── csv.js
