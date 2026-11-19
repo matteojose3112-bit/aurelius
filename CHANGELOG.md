@@ -536,3 +536,18 @@ All notable project changes are documented here.
 - Historical v1 executions retain their prior exact-Decimal rebuild semantics; no historical lot facts are rewritten.
 - CI run #495 passed: 170 backend tests passed, 49 skipped in the SQLite suite, 49 PostgreSQL 16 integration tests passed, and frontend tests/build passed. Additional multi-lot partial-disposal and historical v1 replay stress cases remain follow-up coverage.
 - No cash journal, settlement coordinator, production migration, broker integration, or cash movement is included.
+
+
+## Unreleased — Aurelius public demo experience — 2026-11-19
+
+### Added
+- Replaced the frontend root entry with an unauthenticated Aurelius portfolio-intelligence demo.
+- Added responsive overview, synthetic portfolio metrics, illustrative performance chart, asset allocation, holdings table, activity feed, and research/watchlist views.
+- Added interactive navigation, chart time-range selection, holdings search, and browser print/export.
+- Added an explicit demo-environment banner and read-only/no-connected-accounts disclosure.
+- Preserved the existing authenticated FinTrack workspace as a separate `/workspace.html` entry.
+- Configured Vite to build both public Aurelius and legacy workspace entry points; added dedicated demo component tests.
+
+### Safety boundary
+- The public demo uses hard-coded synthetic data only. It makes no API calls, account connections, live market-data requests, broker connections, order submissions, or financial writes.
+- No Render resource was created or modified and no deployment was triggered.
