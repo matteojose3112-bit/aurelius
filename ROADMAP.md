@@ -1,14 +1,23 @@
 # Aurelius Roadmap — FinTrack Transformation
 
-Last updated: 2026-11-18
+Last updated: 2026-11-19
 
 ## Product direction
 
 **Aurelius** is the planned AI financial intelligence and investment operating system evolving from the FinTrack personal-finance MVP.
 
-**Current status: Foundations 0.3–0.6 in active development.** The versioned ISO 4217 registry, ledger persistence, PostgreSQL constraints, atomic posting/reversals, and authenticated v1 ledger API have been implemented and CI-tested on stacked branches. The global asset/instrument ontology and persistence, provider adapter framework, market-observation ingestion, and long-only portfolio-lot accounting are the next implementation layers. PR #25 merged the provider-neutral adapter framework; PRs #26–#27 and the portfolio-lot persistence branch remain under review. No brokerage execution, paid market-data subscription, hosted database migration, or deployment is authorized.
+**Current status (2026-11-19): Foundations 0.3–0.6 in active development; public demo deployed.** The versioned ISO 4217 registry, ledger persistence, PostgreSQL constraints, atomic posting/reversals, and authenticated v1 ledger API have been implemented and CI-tested on stacked branches. The global asset/instrument ontology and persistence, provider adapter framework, market-observation ingestion, and long-only portfolio-lot accounting are the next implementation layers. PR #25 merged the provider-neutral adapter framework; PRs #26–#27 and the portfolio-lot persistence branch remain under review. A public read-only static showcase is live at https://aurelius-public-demo.onrender.com from `feat/aurelius-public-demo-experience` (commit `3e11d1f`). This deployment contains synthetic demo data only; it does not connect to the API, financial accounts, brokers, or live market data. The existing API/database and legacy frontend services remain unchanged. No brokerage execution, money movement, paid market-data subscription, or hosted database migration is authorized.
 
 **Guiding principle:** evidence, exact calculations, transparency, and downside protection over confident-sounding answers.
+
+## Public demo milestone — deployed 2026-11-19
+
+- [x] Build a responsive Aurelius public showcase with overview metrics, illustrative performance chart, allocation, holdings, activity, and research/watchlist views.
+- [x] Add an explicit demo/read-only disclosure; all portfolio figures are synthetic, with no account or provider connections.
+- [x] Preserve the legacy FinTrack workspace as a separate frontend entry point.
+- [x] Deploy the showcase as a separate Render static site: `aurelius-public-demo` at https://aurelius-public-demo.onrender.com.
+- [x] Verify the initial Render deploy reached `live` status (deploy `dep-dbvlli8n74is739vd030`).
+- [x] Keep PR #35 and PR #36 unmerged; no existing Render service, API, database, or secrets were changed.
 
 ## Phase 0 — Repository and financial-core stabilization (first priority)
 
