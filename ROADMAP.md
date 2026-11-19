@@ -534,3 +534,17 @@ The legacy FinTrack transaction/budget/goal API remains in place and continues t
 - [x] Refactor portfolio execution to expose a caller-owned-session primitive while preserving the existing transaction-owning wrapper.
 - [x] Prove portfolio execution, acquisition lot, and audit event all roll back with the caller's outer transaction in PostgreSQL.
 - [ ] Build the transaction coordinator that invokes both session-bound primitives and writes the investment and cash sides atomically.
+
+
+## Foundation 0.7 — public product surface
+
+- [x] Establish an unauthenticated Aurelius public demo as the frontend root entry.
+- [x] Add responsive portfolio overview, performance range controls, asset allocation, holdings, activity, and research/watchlist sections.
+- [x] Clearly label all figures as synthetic demo data and keep the demo disconnected from APIs, accounts, providers, and trading.
+- [x] Preserve the legacy authenticated FinTrack frontend at `/workspace.html` as a separate build entry.
+- [x] Add frontend tests for demo rendering, navigation, range selection, and holdings search.
+- [ ] Run and verify the full frontend CI build on the new demo branch.
+- [ ] Review the demo branch and approve merging before creating a public static-site deployment.
+- [ ] Obtain explicit approval for any Render resource creation or deployment.
+
+The product priority is now a tangible, reviewable public experience before further expansion of backend financial operations. The demo is a presentation layer only; it is not a live portfolio service and does not imply real-time valuations or investment advice.
