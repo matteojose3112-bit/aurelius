@@ -9,7 +9,7 @@ describe('Aurelius public demo', () => {
     render(<App />)
     expect(screen.getByRole('heading', { name: 'Your wealth, in perspective.' })).toBeInTheDocument()
     expect(screen.getByText(/DEMO ENVIRONMENT/)).toBeInTheDocument()
-    expect(screen.getByText('$128,450.20')).toBeInTheDocument()
+    expect(screen.getAllByText('$128,450.20')).toHaveLength(2)
     expect(screen.getByText('No accounts connected')).toBeInTheDocument()
   })
 
