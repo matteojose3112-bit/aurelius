@@ -4,9 +4,7 @@
  * The first row is treated as the header row.
  */
 export function parseCSV(text) {
-  if (typeof text !== "string") {
-    throw new TypeError("CSV input must be a string.");
-  }
+  if (typeof text !== "string") throw new TypeError("CSV input must be a string.");
 
   const source = text.replace(/^\uFEFF/, "");
   if (source.trim() === "") return { headers: [], rows: [] };
@@ -46,10 +44,7 @@ export function parseCSV(text) {
   record.push(field);
   records.push(record);
 
-  while (records.length && records.at(-1).every((value) => value === "")) {
-    records.pop();
-  }
-
+  while (records.length && records.at(-1).every((value) => value === "")) records.pop();
   if (!records.length) return { headers: [], rows: [] };
 
   const headers = records.shift().map((header, index) => {
@@ -57,24 +52,56 @@ export function parseCSV(text) {
     return cleaned || `Column ${index + 1}`;
   });
 
-  const rows = records.map((values) =>
-    headers.map((_, index) => values[index] ?? "")
-  );
-
+  const rows = records.map((values) => headers.map((_, index) => values[index] ?? ""));
   return { headers, rows };
 }
 
 export function getDatasetStats(rows, columnCount) {
   const emptyCells = rows.reduce(
     (total, row) => total + row.filter((value) => value.trim() === "").length,
-    0
+    0,
   );
 
-  return {
-    rowCount: rows.length,
-    columnCount,
-    emptyCells,
-  };
+  return { rowCount: rows.length, columnCount, emptyCells };
+}
+
+/**
+ * Return duplicate groups using exact cell values and column order.
+ * Each group includes the original row and its occurrence count.
+ */
+export function findDuplicateRows(rows) {
+  const seen = new Map();
+  const duplicates = [];
+
+  for (const row of rows) {
+    const key = JSON.stringify(row);
+    const existing = seen.get(key);
+
+    if (existing) {
+      existing.count += 1;
+    } else {
+      seen.set(key, { row, count: 1 });
+    }
+  }
+
+  for (const entry of seen.values()) {
+    if (entry.count > 1) duplicates.push(entry);
+  }
+
+  return duplicates;
+}
+
+/**
+ * Count blank or whitespace-only cells in each column.
+ */
+export function getMissingValuesByColumn(headers, rows) {
+  return headers.map((header, columnIndex) => ({
+    column: header,
+    missing: rows.reduce(
+      (total, row) => total + (row[columnIndex] == null || row[columnIndex].trim() === "" ? 1 : 0),
+      0,
+    ),
+  }));
 }
 
 export function searchRows(rows, query) {
@@ -82,6 +109,6 @@ export function searchRows(rows, query) {
   if (!normalizedQuery) return rows;
 
   return rows.filter((row) =>
-    row.some((value) => value.toLocaleLowerCase().includes(normalizedQuery))
+    row.some((value) => value.toLocaleLowerCase().includes(normalizedQuery)),
   );
 }
