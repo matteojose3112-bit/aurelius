@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getDatasetStats, parseCSV, searchRows } from "../src/csv.js";
+import {
+  findDuplicateRows,
+  getDatasetStats,
+  getMissingValuesByColumn,
+  parseCSV,
+  searchRows,
+} from "../src/csv.js";
 
 describe("parseCSV", () => {
   it("parses headers and rows", () => {
@@ -55,5 +61,35 @@ describe("dataset helpers", () => {
   it("returns all rows for an empty search", () => {
     const rows = [["Ada"], ["Grace"]];
     expect(searchRows(rows, "  ")).toBe(rows);
+  });
+
+  it("groups exact duplicate rows and reports their frequency", () => {
+    expect(findDuplicateRows([
+      ["Ada", "London"],
+      ["Grace", "Paris"],
+      ["Ada", "London"],
+      ["Ada", "London"],
+    ])).toEqual([{ row: ["Ada", "London"], count: 3 }]);
+  });
+
+  it("does not treat different cell values or order as duplicates", () => {
+    expect(findDuplicateRows([["Ada", "London"], ["London", "Ada"], ["Ada", "london"]])).toEqual([]);
+  });
+
+  it("counts blank and whitespace-only values by column", () => {
+    expect(getMissingValuesByColumn(["Name", "City"], [
+      ["Ada", ""],
+      ["  ", "Paris"],
+      ["Grace", " "],
+    ])).toEqual([
+      { column: "Name", missing: 1 },
+      { column: "City", missing: 2 },
+    ]);
+  });
+
+  it("returns zero missing values for complete columns", () => {
+    expect(getMissingValuesByColumn(["Name"], [["Ada"], ["Grace"]])).toEqual([
+      { column: "Name", missing: 0 },
+    ]);
   });
 });
