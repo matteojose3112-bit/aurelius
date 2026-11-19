@@ -8,7 +8,7 @@ describe('Aurelius public demo', () => {
   it('renders a public portfolio overview without authentication', () => {
     render(<App />)
     expect(screen.getByRole('heading', { name: 'Your wealth, in perspective.' })).toBeInTheDocument()
-    expect(screen.getByText('DEMO ENVIRONMENT')).toBeInTheDocument()
+    expect(screen.getByText(/DEMO ENVIRONMENT/)).toBeInTheDocument()
     expect(screen.getByText('$128,450.20')).toBeInTheDocument()
     expect(screen.getByText('No accounts connected')).toBeInTheDocument()
   })
@@ -20,7 +20,7 @@ describe('Aurelius public demo', () => {
     expect(screen.getByRole('heading', { name: 'All holdings' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Activity' }))
     expect(screen.getByRole('heading', { name: 'Activity log' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Research' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Research/ }))
     expect(screen.getByRole('heading', { name: 'Consistency over prediction.' })).toBeInTheDocument()
   })
 
