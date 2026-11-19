@@ -1,4 +1,10 @@
-import { getDatasetStats, parseCSV, searchRows } from "./csv.js";
+import {
+  findDuplicateRows,
+  getDatasetStats,
+  getMissingValuesByColumn,
+  parseCSV,
+  searchRows,
+} from "./csv.js";
 import "./styles.css";
 
 const elements = {
@@ -9,6 +15,9 @@ const elements = {
   rowCount: document.querySelector("#row-count"),
   columnCount: document.querySelector("#column-count"),
   emptyCount: document.querySelector("#empty-count"),
+  duplicateCount: document.querySelector("#duplicate-count"),
+  duplicateSummary: document.querySelector("#duplicate-summary"),
+  missingList: document.querySelector("#missing-list"),
   searchInput: document.querySelector("#search-input"),
   resultCount: document.querySelector("#result-count"),
   tableHead: document.querySelector("#table-head"),
@@ -70,13 +79,34 @@ async function loadFile(file) {
     elements.dataPanel.hidden = false;
 
     const stats = getDatasetStats(state.rows, state.headers.length);
+    const duplicateGroups = findDuplicateRows(state.rows);
     elements.rowCount.textContent = stats.rowCount.toLocaleString();
     elements.columnCount.textContent = stats.columnCount.toLocaleString();
     elements.emptyCount.textContent = stats.emptyCells.toLocaleString();
+    elements.duplicateCount.textContent = duplicateGroups.length.toLocaleString();
+    elements.duplicateSummary.textContent = duplicateGroups.length
+      ? `${duplicateGroups.length.toLocaleString()} groups · ${duplicateGroups.reduce((sum, group) => sum + group.count - 1, 0).toLocaleString()} extra rows`
+      : "No duplicate rows";
+    renderMissingValues();
     elements.searchInput.value = "";
     renderTable();
   } catch (error) {
     showError(error instanceof Error ? error.message : "Unable to read this CSV file.");
+  }
+}
+
+function renderMissingValues() {
+  const missingValues = getMissingValuesByColumn(state.headers, state.rows);
+  elements.missingList.replaceChildren();
+
+  for (const item of missingValues) {
+    const listItem = document.createElement("li");
+    const columnName = document.createElement("span");
+    const count = document.createElement("strong");
+    columnName.textContent = item.column;
+    count.textContent = item.missing.toLocaleString();
+    listItem.append(columnName, count);
+    elements.missingList.append(listItem);
   }
 }
 
