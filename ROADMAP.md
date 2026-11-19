@@ -2,24 +2,21 @@
 
 ## Product direction
 
-Build a polished, useful CSV workspace that demonstrates practical JavaScript proficiency through real browser functionality, data processing, modular code, and automated tests.
+Build a polished CSV workspace that demonstrates practical JavaScript proficiency through browser functionality, data processing, modular code, and automated tests.
 
 ## Milestone 0.1 — Foundation
 
-- [x] Replace the previous application baseline on a dedicated rebuild branch.
-- [x] Establish a vanilla JavaScript + Vite project.
-- [x] Create responsive application shell.
-- [x] Import and parse CSV files locally.
-- [x] Preview records and search across columns.
-- [x] Display basic dataset statistics.
-- [x] Add unit tests for parsing and data helpers.
-- [x] Add GitHub Actions CI for unit tests and production builds.
-- [x] Verify unit tests and production build in CI.
+- [x] Vanilla JavaScript + Vite project.
+- [x] Responsive application shell.
+- [x] Local CSV import and parsing.
+- [x] Record preview and cross-column search.
+- [x] Dataset statistics.
+- [x] Unit tests and GitHub Actions CI.
 
 ## Milestone 0.2 — Data quality
 
-- [ ] Detect duplicate rows.
-- [ ] Identify missing values by column.
+- [x] Detect exact duplicate rows and report repeated occurrences.
+- [x] Identify blank and whitespace-only values by column.
 - [ ] Add column-level summaries and type hints.
 - [ ] Add sorting and filtering controls.
 
@@ -34,7 +31,7 @@ Build a polished, useful CSV workspace that demonstrates practical JavaScript pr
 
 - [ ] Improve accessibility and keyboard navigation.
 - [ ] Add representative sample datasets.
-- [ ] Add comprehensive tests for edge cases.
+- [ ] Add comprehensive edge-case tests.
 - [ ] Publish a static demo.
 - [ ] Add screenshots and usage documentation.
 
