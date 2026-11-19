@@ -1,3 +1,22 @@
+## [Unreleased] — Aurelius public demo experience — 2026-11-19
+
+### Added
+- Added a responsive public Aurelius showcase with overview metrics, interactive performance ranges, asset allocation, holdings, activity, and research/watchlist views.
+- Added an explicit synthetic-data and read-only demo disclosure; no account, broker, API, or market-data provider is connected.
+- Preserved the legacy FinTrack workspace at the separate `/workspace.html` entry point while making Aurelius the frontend root experience.
+
+### Deployment
+- Created the separate Render static site `aurelius-public-demo` at https://aurelius-public-demo.onrender.com.
+- Initial deployment reached `live` status on 2026-11-19 (deploy `dep-dbvlli8n74is739vd030`, commit `3e11d1f`).
+- The site tracks `feat/aurelius-public-demo-experience`; PR #36 remains draft and unmerged. PR #35 also remains unmerged.
+- No existing Render service, API, database, secret, production financial data, brokerage connection, order execution, or money movement was changed.
+
+### Validation
+- Frontend tests and Vite production build passed on the deployed commit; backend tests passed in the associated CI run.
+- The Render static-site build completed and the deployment status was confirmed `live`.
+
+---
+
 ## [Unreleased] — Foundation 0.6 Atomic Portfolio Lot Service — 2026-11-17
 
 ### Added
