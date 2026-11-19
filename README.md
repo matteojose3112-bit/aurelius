@@ -462,3 +462,21 @@ The lot engine now uses the immutable currency snapshot for new precision-policy
 
 
 The lot engine now supports precision-policy version 2 for new persisted executions. It uses the immutable currency snapshot's minor-unit exponent, quantizes acquisition basis, and allocates rounded gross proceeds, sale fees, and cost basis across lots deterministically with exact residuals. A persisted version flag preserves historical version-1 replay/rebuild semantics; historical financial facts are not rewritten. CI run #495 passed: 170 backend tests passed, 49 skipped in the SQLite suite, 49 PostgreSQL 16 integration tests passed, and frontend tests/build passed. Additional partial-disposal, v1 historical replay, and residual stress cases remain a gate before coordinator implementation.
+
+
+## Aurelius public demo experience
+
+The public frontend entry now opens an unauthenticated Aurelius portfolio dashboard at the site root. It presents an illustrative USD portfolio with synthetic holdings, asset allocation, performance history, activity, and a small research/watchlist view. All figures are explicitly labeled as demo data; the page does not call the API, connect financial accounts, fetch live quotes, or place orders.
+
+The existing authenticated FinTrack workspace remains available at `/workspace.html` as a separate legacy entry. Both pages are emitted by the frontend Vite build. The public Aurelius demo is therefore independently hostable as a static site while the backend settlement and portfolio APIs continue through their review gates.
+
+### Run the public demo locally
+
+From `frontend/`:
+
+- Install dependencies: `npm install`
+- Start the dev server: `npm run dev`
+- Open the root page for Aurelius; open `/workspace.html` for the legacy FinTrack workspace.
+- Production build: `npm run build` (outputs both entry points to `dist/`).
+
+See [Foundation 0.7 — Public Demo Experience](docs/architecture/FOUNDATION_0.7_PUBLIC_DEMO_EXPERIENCE.md) for the scope and safety boundary.
