@@ -13,7 +13,8 @@ Build a polished, useful CSV workspace that demonstrates practical JavaScript pr
 - [x] Preview records and search across columns.
 - [x] Display basic dataset statistics.
 - [x] Add unit tests for parsing and data helpers.
-- [ ] Run tests and production build in CI.
+- [x] Add GitHub Actions CI for unit tests and production builds.
+- [x] Verify unit tests and production build in CI.
 
 ## Milestone 0.2 — Data quality
 
