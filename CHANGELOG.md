@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — Continuous integration
+
+- Added a GitHub Actions workflow for dependency installation, unit tests, and production builds.
+- Verified the initial CI run: all unit tests passed and the Vite production build completed successfully.
+- Updated project documentation and roadmap to reflect the verified checks.
+
 ## 0.1.0 — JavaScript rebuild foundation
 
 - Replaced the prior application tree on the dedicated `rebuild/fintrack-javascript-reset` branch.
