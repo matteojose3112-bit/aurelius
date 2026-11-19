@@ -46,7 +46,18 @@
               <article class="stat-card"><span>Rows</span><strong id="row-count">0</strong></article>
               <article class="stat-card"><span>Columns</span><strong id="column-count">0</strong></article>
               <article class="stat-card"><span>Empty cells</span><strong id="empty-count">0</strong></article>
+              <article class="stat-card"><span>Duplicate groups</span><strong id="duplicate-count">0</strong></article>
             </div>
+            <section class="quality-panel" aria-labelledby="quality-heading">
+              <div class="quality-heading">
+                <div>
+                  <p class="eyebrow">Data quality</p>
+                  <h3 id="quality-heading">Missing values by column</h3>
+                </div>
+                <span id="duplicate-summary" class="quality-summary">No duplicate rows</span>
+              </div>
+              <ul class="missing-list" id="missing-list"></ul>
+            </section>
             <div class="table-toolbar">
               <label class="search-box">
                 <span aria-hidden="true">⌕</span>
