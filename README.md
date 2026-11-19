@@ -1,12 +1,12 @@
 # Aurelius — AI Financial Intelligence & Investment Operating System
 
-> **Formerly FinTrack.** Aurelius is being developed as an evidence-first financial partner for personal finance, accounting, market research, portfolio analysis, risk assessment, and financial education. The existing FinTrack application is the starting foundation—not a completed Aurelius product.
+> **Formerly FinTrack.** Aurelius is being developed as an evidence-first financial partner for personal finance, accounting, market research, portfolio analysis, risk assessment, and financial education. The existing FinTrack application is the starting foundation—not a completed Aurelius product. The new public site is a product showcase, not a production financial application.
 
-**Transformation status:** Aurelius has progressed through Foundations 0.1–0.6. The global ISO 4217 currency registry, durable ledger schema, PostgreSQL constraints, atomic posting/reversal service, and authenticated v1 ledger API have been implemented and CI-tested on stacked feature branches. The provider-neutral adapter framework was merged through PR #25. Global instrument persistence and licensed market-observation ingestion are under active review; long-only portfolio lot accounting is implemented as a domain layer, with its persistence schema now being built on a separate draft branch. No live broker connection, real-money execution, paid market-data subscription, hosted database migration, Render change, or deployment has been performed.
+**Transformation status (2026-11-19):** Aurelius has progressed through Foundations 0.1–0.6. The global ISO 4217 currency registry, durable ledger schema, PostgreSQL constraints, atomic posting/reversal service, and authenticated v1 ledger API have been implemented and CI-tested on stacked feature branches. The provider-neutral adapter framework was merged through PR #25. Global instrument persistence and licensed market-observation ingestion are under active review; long-only portfolio lot accounting is implemented as a domain layer, with its persistence schema now being built on a separate draft branch. A public, read-only Aurelius showcase is now deployed on Render at https://aurelius-public-demo.onrender.com from `feat/aurelius-public-demo-experience`. This is a separate static site; it does not connect to the API, accounts, brokers, market-data providers, or production financial records. The existing API/database infrastructure has not been changed.
 
 **Operating principle:** deterministic financial calculations and traceable source data come first; AI interprets and challenges evidence, but never invents facts or silently executes financial actions.
 
-## Current Aurelius development status — 2026-11-17
+## Current Aurelius development status — 2026-11-19
 
 - The ISO 4217 registry replaced the original eight-code hard-coded money map and preserves current and historical definitions from the SIX Maintenance Agency snapshot.
 - The first authenticated ledger API uses exact integer-minor-unit strings, owner-derived authorization, idempotent posting, derived balances, and exact reversals.
@@ -14,7 +14,7 @@
 - The provider-neutral adapter framework is merged in PR #25. Provider ingestion and FX reference adapters remain feature-branch work; no live production feed or paid data plan is configured.
 - Long-only portfolio lot accounting supports FIFO/LIFO/specific-lot allocation in the deterministic domain. PR #27 adds this domain slice; the current stacked feature branches add owner-scoped persistence tables and a PostgreSQL-only atomic execution service; the new service/concurrency suite passed PostgreSQL 16 CI run #410 (42 integration tests), along with backend and frontend validation.
 - PR #19–#24 and #26–#27 are not all merged; review each branch and its dependencies before integration. PR #25 is merged. The portfolio-lot persistence branch is separate and draft.
-- No brokerage order execution, money movement, hosted database migration, Render infrastructure change, secret change, or deployment has occurred.
+- The public Aurelius static demo is live at https://aurelius-public-demo.onrender.com (Render service `aurelius-public-demo`), deployed from `feat/aurelius-public-demo-experience` at commit `3e11d1f`. It uses synthetic, illustrative figures and is read-only. The existing `fintrack-api`, database, secrets, and legacy `fintrack-web` service were not modified; no broker connection, order execution, money movement, or hosted database migration occurred.
 - See [Money and Currency Contract](docs/finance/MONEY_CONTRACT.md), [Account and Ledger Contract](docs/finance/ACCOUNT_LEDGER_CONTRACT.md), [Global Markets Architecture](docs/architecture/FOUNDATION_0.3_GLOBAL_MARKETS.md), and [Portfolio Lot Persistence](docs/architecture/FOUNDATION_0.6_PORTFOLIO_LOT_PERSISTENCE.md).
 
 ## Aurelius transformation — assessment baseline
@@ -462,3 +462,21 @@ The lot engine now uses the immutable currency snapshot for new precision-policy
 
 
 The lot engine now supports precision-policy version 2 for new persisted executions. It uses the immutable currency snapshot's minor-unit exponent, quantizes acquisition basis, and allocates rounded gross proceeds, sale fees, and cost basis across lots deterministically with exact residuals. A persisted version flag preserves historical version-1 replay/rebuild semantics; historical financial facts are not rewritten. CI run #495 passed: 170 backend tests passed, 49 skipped in the SQLite suite, 49 PostgreSQL 16 integration tests passed, and frontend tests/build passed. Additional partial-disposal, v1 historical replay, and residual stress cases remain a gate before coordinator implementation.
+
+
+## Aurelius public demo experience
+
+The public frontend entry now opens an unauthenticated Aurelius portfolio dashboard at the site root. It presents an illustrative USD portfolio with synthetic holdings, asset allocation, performance history, activity, and a small research/watchlist view. All figures are explicitly labeled as demo data; the page does not call the API, connect financial accounts, fetch live quotes, or place orders.
+
+The existing authenticated FinTrack workspace remains available at `/workspace.html` as a separate legacy entry. Both pages are emitted by the frontend Vite build. The public Aurelius demo is therefore independently hostable as a static site while the backend settlement and portfolio APIs continue through their review gates.
+
+### Run the public demo locally
+
+From `frontend/`:
+
+- Install dependencies: `npm install`
+- Start the dev server: `npm run dev`
+- Open the root page for Aurelius; open `/workspace.html` for the legacy FinTrack workspace.
+- Production build: `npm run build` (outputs both entry points to `dist/`).
+
+See [Foundation 0.7 — Public Demo Experience](docs/architecture/FOUNDATION_0.7_PUBLIC_DEMO_EXPERIENCE.md) for the scope and safety boundary.

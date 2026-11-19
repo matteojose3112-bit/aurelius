@@ -1,3 +1,22 @@
+## [Unreleased] — Aurelius public demo experience — 2026-11-19
+
+### Added
+- Added a responsive public Aurelius showcase with overview metrics, interactive performance ranges, asset allocation, holdings, activity, and research/watchlist views.
+- Added an explicit synthetic-data and read-only demo disclosure; no account, broker, API, or market-data provider is connected.
+- Preserved the legacy FinTrack workspace at the separate `/workspace.html` entry point while making Aurelius the frontend root experience.
+
+### Deployment
+- Created the separate Render static site `aurelius-public-demo` at https://aurelius-public-demo.onrender.com.
+- Initial deployment reached `live` status on 2026-11-19 (deploy `dep-dbvlli8n74is739vd030`, commit `3e11d1f`).
+- The site tracks `feat/aurelius-public-demo-experience`; PR #36 remains draft and unmerged. PR #35 also remains unmerged.
+- No existing Render service, API, database, secret, production financial data, brokerage connection, order execution, or money movement was changed.
+
+### Validation
+- Frontend tests and Vite production build passed on the deployed commit; backend tests passed in the associated CI run.
+- The Render static-site build completed and the deployment status was confirmed `live`.
+
+---
+
 ## [Unreleased] — Foundation 0.6 Atomic Portfolio Lot Service — 2026-11-17
 
 ### Added
@@ -536,3 +555,18 @@ All notable project changes are documented here.
 - Historical v1 executions retain their prior exact-Decimal rebuild semantics; no historical lot facts are rewritten.
 - CI run #495 passed: 170 backend tests passed, 49 skipped in the SQLite suite, 49 PostgreSQL 16 integration tests passed, and frontend tests/build passed. Additional multi-lot partial-disposal and historical v1 replay stress cases remain follow-up coverage.
 - No cash journal, settlement coordinator, production migration, broker integration, or cash movement is included.
+
+
+## Unreleased — Aurelius public demo experience — 2026-11-19
+
+### Added
+- Replaced the frontend root entry with an unauthenticated Aurelius portfolio-intelligence demo.
+- Added responsive overview, synthetic portfolio metrics, illustrative performance chart, asset allocation, holdings table, activity feed, and research/watchlist views.
+- Added interactive navigation, chart time-range selection, holdings search, and browser print/export.
+- Added an explicit demo-environment banner and read-only/no-connected-accounts disclosure.
+- Preserved the existing authenticated FinTrack workspace as a separate `/workspace.html` entry.
+- Configured Vite to build both public Aurelius and legacy workspace entry points; added dedicated demo component tests.
+
+### Safety boundary
+- The public demo uses hard-coded synthetic data only. It makes no API calls, account connections, live market-data requests, broker connections, order submissions, or financial writes.
+- No Render resource was created or modified and no deployment was triggered.
